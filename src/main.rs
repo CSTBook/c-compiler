@@ -10,7 +10,7 @@ enum ArgOption {
     Lex,
     Parser,
     Codegen,
-    Assemble
+    Source
 }
 
 fn main() {
@@ -33,9 +33,9 @@ fn main() {
         Command::new("gcc").args([assembly_file.clone(),"-o".to_string(),filename.clone()]).output().unwrap();
         println!("Output file at {}",filename.clone());
         Command::new("rm").arg(assembly_file.clone()).output().unwrap();
-    } else {
-        exit(0);
     }
+
+    exit(0);
 }
 
 //input is of the form cargo run -- --option filename
@@ -49,7 +49,7 @@ fn arg_parser(args: Vec<String>) -> (String, ArgOption) {
             "--lex" => ArgOption::Lex,
             "--parse" => ArgOption::Parser,
             "--codegen" => ArgOption::Codegen,
-            "-S" => ArgOption::Assemble,
+            "-S" => ArgOption::Source,
             _ => ArgOption::None
         };
         filename = args[2].split(".").next().unwrap().to_string();
@@ -89,7 +89,7 @@ fn compile(filename: String, option: ArgOption) -> String {
             let asm_program = assembler::assembler(parsed_program);
             code_emission::code_emission(asm_program, filename)
         },
-        ArgOption::Assemble => {
+        ArgOption::Source => {
             let tokens = lexer::lexer(filename.clone());
             let parsed_program = parser::parser(tokens);
             let asm_program = assembler::assembler(parsed_program);
