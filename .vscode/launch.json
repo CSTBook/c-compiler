@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "Rust Compiler",
-            "args": ["main.c", "--lex"],
+            "args": ["--lex","test_files/main.c"],
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/target/debug/compiler"

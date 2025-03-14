@@ -58,4 +58,5 @@ fn arg_parser(args: Vec<String>) -> (String, ArgOption) {
 fn compile(filename: String, _option: ArgOption) {
     let tokens = lexer::lexer(filename);
     println!("{:?}", tokens);
+    parser::parser(tokens);
 }
