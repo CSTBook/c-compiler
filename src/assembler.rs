@@ -49,6 +49,7 @@ fn parse_expression(exp_ast: AstNode) -> AsmNode {
     }
 }
 
+#[allow(dead_code)]
 pub fn pretty_printer(node: &AsmNode, indent_level: usize) -> String {
     match node {
         AsmNode::Program(func) => {
@@ -77,6 +78,7 @@ pub fn pretty_printer(node: &AsmNode, indent_level: usize) -> String {
     }
 }
 
+#[allow(dead_code)]
 fn tabs(indent_level: usize) -> String {
     "  ".repeat(indent_level)
 }

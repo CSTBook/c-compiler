@@ -1,4 +1,4 @@
-use std::{env, process::Command};
+use std::{env, process::{exit, Command}};
 mod lexer;
 mod parser;
 mod assembler;
@@ -9,7 +9,8 @@ enum ArgOption {
     None,
     Lex,
     Parser,
-    Codegen
+    Codegen,
+    Assemble
 }
 
 fn main() {
@@ -24,13 +25,17 @@ fn main() {
     Command::new("gcc").args(["-E","-P",&(filename.clone()+".c"),"-o",&(filename.clone()+".i")]).output().unwrap();
 
     //compile
-    // Command::new("rm").arg(&(filename.clone()+".i")).output().unwrap();
-    compile(filename.clone(), option);
-
-    //linker
-    let _assembly_file="";
-    // Command::new("gcc").args([assembly_file,"-o",&(filename.clone()+".o")]).output().unwrap();
+    let assembly_file = compile(filename.clone(), option);
+    Command::new("rm").arg(filename.clone()+".i").output().unwrap();
     
+    //linker
+    if !assembly_file.is_empty() {
+        Command::new("gcc").args([assembly_file.clone(),"-o".to_string(),filename.clone()]).output().unwrap();
+        println!("Output file at {}",filename.clone());
+        Command::new("rm").arg(assembly_file.clone()).output().unwrap();
+    } else {
+        exit(0);
+    }
 }
 
 //input is of the form cargo run -- --option filename
@@ -44,6 +49,7 @@ fn arg_parser(args: Vec<String>) -> (String, ArgOption) {
             "--lex" => ArgOption::Lex,
             "--parse" => ArgOption::Parser,
             "--codegen" => ArgOption::Codegen,
+            "-S" => ArgOption::Assemble,
             _ => ArgOption::None
         };
         filename = args[2].split(".").next().unwrap().to_string();
@@ -57,9 +63,38 @@ fn arg_parser(args: Vec<String>) -> (String, ArgOption) {
     (filename, option)
 }
 
-fn compile(filename: String, _option: ArgOption) {
-    let tokens = lexer::lexer(filename.clone());
-    let parsed_program = parser::parser(tokens);
-    let asm_program = assembler::assembler(parsed_program);
-
+fn compile(filename: String, option: ArgOption) -> String {
+    match option {
+        ArgOption::Lex => {
+            let tokens = lexer::lexer(filename.clone());
+            println!("{:?}",tokens);
+            String::new()
+        },
+        ArgOption::Parser => {
+            let tokens = lexer::lexer(filename.clone());
+            let parsed_program = parser::parser(tokens);
+            println!("{}",parser::pretty_printer(&parsed_program, 0));
+            String::new()
+        },
+        ArgOption::Codegen => {
+            let tokens = lexer::lexer(filename.clone());
+            let parsed_program = parser::parser(tokens);
+            let asm_program = assembler::assembler(parsed_program);
+            println!("{}",assembler::pretty_printer(&asm_program, 0));
+            String::new()
+        },
+        ArgOption::None => {
+            let tokens = lexer::lexer(filename.clone());
+            let parsed_program = parser::parser(tokens);
+            let asm_program = assembler::assembler(parsed_program);
+            code_emission::code_emission(asm_program, filename)
+        },
+        ArgOption::Assemble => {
+            let tokens = lexer::lexer(filename.clone());
+            let parsed_program = parser::parser(tokens);
+            let asm_program = assembler::assembler(parsed_program);
+            code_emission::code_emission(asm_program, filename);
+            String::new()
+        }
+    }
 }

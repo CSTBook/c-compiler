@@ -62,6 +62,7 @@ fn expect(expected: &str, tokens: &mut Vec<String>) -> String {
     tokens.remove(0)
 }
 
+#[allow(dead_code)]
 pub fn pretty_printer(node: &AstNode, indent_level: usize) -> String {
     match node {
         AstNode::Program(func) => {
@@ -79,6 +80,7 @@ pub fn pretty_printer(node: &AstNode, indent_level: usize) -> String {
     }
 }
 
+#[allow(dead_code)]
 fn tabs(indent_level: usize) -> String {
     "  ".repeat(indent_level)
 }
