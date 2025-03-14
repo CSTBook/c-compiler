@@ -1,6 +1,8 @@
 use std::{env, process::Command};
 mod lexer;
 mod parser;
+mod assembler;
+mod code_emission;
 
 #[derive(Debug)]
 enum ArgOption {
@@ -56,7 +58,8 @@ fn arg_parser(args: Vec<String>) -> (String, ArgOption) {
 }
 
 fn compile(filename: String, _option: ArgOption) {
-    let tokens = lexer::lexer(filename);
-    println!("{:?}", tokens);
-    parser::parser(tokens);
+    let tokens = lexer::lexer(filename.clone());
+    let parsed_program = parser::parser(tokens);
+    let asm_program = assembler::assembler(parsed_program);
+
 }

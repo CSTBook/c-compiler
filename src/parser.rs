@@ -1,14 +1,14 @@
 use regex::Regex;
 
 #[derive(PartialEq, Eq)]
-enum AstNode {
+pub enum AstNode {
     Program(Box<AstNode>),
     Function(String, Box<AstNode>),
     Return(Box<AstNode>),
     Constant(i32)
 }
 
-pub fn parser(mut tokens: Vec<String>) {
+pub fn parser(mut tokens: Vec<String>) -> AstNode{
     let program = parse_program(&mut tokens);
 
     //check for extraneous tokens
@@ -16,7 +16,7 @@ pub fn parser(mut tokens: Vec<String>) {
         panic!("Extraneous tokens found: {:?}", tokens);
     }
 
-    println!("{}", pretty_printer(program,0));
+    program
 }
 
 fn parse_program(tokens: &mut Vec<String>) -> AstNode {
@@ -62,16 +62,16 @@ fn expect(expected: &str, tokens: &mut Vec<String>) -> String {
     tokens.remove(0)
 }
 
-fn pretty_printer(node: AstNode, indent_level: usize) -> String {
+pub fn pretty_printer(node: &AstNode, indent_level: usize) -> String {
     match node {
         AstNode::Program(func) => {
-            format!("{}Program(\n{}{}\n{})",tabs(indent_level), tabs(indent_level), pretty_printer(*func,indent_level+1), tabs(indent_level))
+            format!("{}Program(\n{}{}\n{})",tabs(indent_level), tabs(indent_level), pretty_printer(func,indent_level+1), tabs(indent_level))
         },
         AstNode::Function(name, statement) => {
-            format!("{}Function(\n{}\tname=\"{}\"\n{}\tbody={}\n{})",tabs(indent_level),tabs(indent_level),name,tabs(indent_level),pretty_printer(*statement,indent_level+1),tabs(indent_level))
+            format!("{}Function(\n{}\tname=\"{}\"\n{}\tbody={}\n{})",tabs(indent_level),tabs(indent_level),name,tabs(indent_level),pretty_printer(statement,indent_level+1),tabs(indent_level))
         },
         AstNode::Return(exp) => {
-            format!("Return(\n{}{}\n{})",tabs(indent_level),pretty_printer(*exp, indent_level+1),tabs(indent_level+2))
+            format!("Return(\n{}{}\n{})",tabs(indent_level),pretty_printer(exp, indent_level+1),tabs(indent_level+2))
         },
         AstNode::Constant(val) => {
             format!("{}Constant({})",tabs(indent_level),val)
