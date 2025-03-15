@@ -3,6 +3,7 @@ mod lexer;
 mod parser;
 mod assembler;
 mod code_emission;
+mod tacky;
 
 #[derive(Debug)]
 enum ArgOption {
@@ -10,7 +11,8 @@ enum ArgOption {
     Lex,
     Parser,
     Codegen,
-    Source
+    Source,
+    Tacky
 }
 
 fn main() {
@@ -50,6 +52,7 @@ fn arg_parser(args: Vec<String>) -> (String, ArgOption) {
             "--parse" => ArgOption::Parser,
             "--codegen" => ArgOption::Codegen,
             "-S" => ArgOption::Source,
+            "--tacky" => ArgOption::Tacky,
             _ => ArgOption::None
         };
         filename = args[2].split(".").next().unwrap().to_string();
@@ -94,6 +97,13 @@ fn compile(filename: String, option: ArgOption) -> String {
             let parsed_program = parser::parser(tokens);
             let asm_program = assembler::assembler(parsed_program);
             code_emission::code_emission(asm_program, filename);
+            String::new()
+        },
+        ArgOption::Tacky => {
+            let tokens = lexer::lexer(filename.clone());
+            let parsed_program = parser::parser(tokens);
+            let tacky_program = tacky::emit_tacky(parsed_program);
+            println!("{}",tacky::pretty_printer(&tacky_program, 0));
             String::new()
         }
     }
