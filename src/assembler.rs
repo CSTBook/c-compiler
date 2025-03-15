@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     parser::{self},
     tacky::{TackyInstruction, TackyNode, TackyValue},
@@ -8,23 +10,25 @@ pub enum AsmNode {
     Function(String, Vec<Instruction>), //name, instructions
 }
 
+#[derive(Clone,PartialEq)]
 pub enum Unary {
     Neg,
     Not,
 }
-
+#[derive(Clone,PartialEq)]
 pub enum Register {
     AX,
     R10,
 }
 
+#[derive(Clone,PartialEq)]
 pub enum Instruction {
     Mov(Operand, Operand), //src, dst
     Unary(Unary, Operand), //unop, operand
     AllocateStack(i32),
     Ret,
 }
-
+#[derive(Clone,PartialEq)]
 pub enum Operand {
     Imm(i32),       //val
     Reg(Register),  //reg
@@ -33,7 +37,11 @@ pub enum Operand {
 }
 
 pub fn assembler(program_ast: TackyNode) -> AsmNode {
-    parse_program(program_ast)
+    let mut program = parse_program(program_ast);
+    let offset = replace_pseudoregister(&mut program);
+    fix_instructions(offset, &mut program);
+
+    program
 }
 
 fn parse_program(program_ast: TackyNode) -> AsmNode {
@@ -68,7 +76,7 @@ fn parse_instruction(tacky_instructions: Vec<TackyInstruction>) -> Vec<Instructi
                 instructions.push(Instruction::Mov(parse_operand(&src), parse_operand(&dest)));
                 instructions.push(Instruction::Unary(parse_unop(unop), parse_operand(&dest)));
             }
-            _ => panic!("Tacky Instruction Assembler Error"),
+            // _ => panic!("Tacky Instruction Assembler Error"),
         }
     }
 
@@ -79,7 +87,7 @@ fn parse_operand(op_ast: &TackyValue) -> Operand {
     match op_ast {
         TackyValue::Constant(val) => Operand::Imm(*val),
         TackyValue::Var(name) => Operand::Pseudo(name.clone()),
-        _ => panic!("Tacky Operand Assembler Error"),
+        // _ => panic!("Tacky Operand Assembler Error"),
     }
 }
 
@@ -87,6 +95,61 @@ fn parse_unop(unop: parser::Unary) -> Unary {
     match unop {
         parser::Unary::Complement => Unary::Not,
         parser::Unary::Negate => Unary::Neg,
+    }
+}
+
+fn replace_pseudoregister(program: &mut AsmNode) -> i32 {
+    let mut temp_vars: HashMap<String, i32> = HashMap::new();
+
+    if let AsmNode::Program(func) = program {
+        if let AsmNode::Function(_, ref mut instructions) = **func {
+            for instruction in instructions.iter_mut() {
+                *instruction = match instruction {
+                    Instruction::Mov(src, dst) => {
+                        let new_src = replace_operand(src, &mut temp_vars);
+                        let new_dst = replace_operand(dst, &mut temp_vars);
+
+                        Instruction::Mov(new_src, new_dst)
+                    }
+                    Instruction::Unary(unop, operand) => {
+                        let new_op = replace_operand(operand, &mut temp_vars);
+
+                        Instruction::Unary(unop.clone(), new_op)
+                    }
+                    _ => instruction.clone()
+                };
+            }
+        }
+    }
+
+    -4*(temp_vars.len() as i32)    
+}
+
+fn replace_operand(operand: &Operand, temp_vars: &mut HashMap<String, i32>) -> Operand {
+    if let Operand::Pseudo(name) = operand {
+        if !temp_vars.contains_key(name) {
+            temp_vars.insert(name.clone(), -4*(temp_vars.len() as i32 + 1));
+        }
+        Operand::Stack(*temp_vars.get(name).unwrap())
+    } else {
+        operand.clone()
+    }
+}
+
+fn fix_instructions(offset: i32, program: &mut AsmNode) {
+    if let AsmNode::Program(func) = program {
+        if let AsmNode::Function(_, ref mut instructions) = **func {
+            instructions.insert(0, Instruction::AllocateStack(offset));
+            for index in 1..instructions.clone().len() {
+                if let Instruction::Mov(src, dst) = instructions.clone().get(index).unwrap() {
+                    if let (Operand::Stack(_),Operand::Stack(_)) = (src,dst) { //both stack ops
+                        instructions.remove(index);
+                        instructions.insert(index, Instruction::Mov(src.clone(), Operand::Reg(Register::R10)));
+                        instructions.insert(index+1, Instruction::Mov(Operand::Reg(Register::R10),dst.clone()));
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -136,24 +199,24 @@ fn pretty_printer_instr(instruction: &Instruction, indent_level: usize) -> Strin
             pretty_printer_unop(unop),
             pretty_printer_opr(operand)
         ),
-        Instruction::AllocateStack(val) => format!("{}AllocateStack({})", tabs(indent_level),*val),
-        Instruction::Ret => format!("Ret"),
+        Instruction::AllocateStack(val) => format!("{}AllocateStack({})", tabs(indent_level), *val),
+        Instruction::Ret => format!("{}Ret", tabs(indent_level)),
     }
 }
 
 fn pretty_printer_unop(unop: &Unary) -> String {
     match unop {
         Unary::Neg => String::from("Neg"),
-        Unary::Not => String::from("Not")
+        Unary::Not => String::from("Not"),
     }
 }
 
 fn pretty_printer_opr(operand: &Operand) -> String {
     match operand {
         Operand::Imm(val) => format!("Imm({})", *val),
-        Operand::Reg(register) => format!("Reg({})",pretty_printer_reg(register)),
-        Operand::Pseudo(_) => format!(""),
-        Operand::Stack(_) => format!(""),
+        Operand::Reg(register) => format!("Reg({})", pretty_printer_reg(register)),
+        Operand::Pseudo(name) => format!("Var({})", name),
+        Operand::Stack(val) => format!("Stack({})", *val),
     }
 }
 

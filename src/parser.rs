@@ -2,16 +2,16 @@ use regex::Regex;
 
 pub enum AstNode {
     Program(Box<AstNode>),
-    Function(String, Statement)
+    Function(String, Statement),
 }
 pub enum Statement {
-    Return(Expression)
+    Return(Expression),
 }
 pub enum Expression {
     Constant(i32),
     Unary(Unary, Box<Expression>),
 }
-#[derive(PartialEq, Eq,Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum Unary {
     Complement,
     Negate,
@@ -125,24 +125,28 @@ pub fn pretty_printer(node: &AstNode, indent_level: usize) -> String {
 
 fn pretty_printer_statement(statement: &Statement, indent_level: usize) -> String {
     match statement {
-        Statement::Return(expression) => format!("Return(\n{}\n{})",pretty_printer_expr(expression, indent_level+1),tabs(indent_level)),
+        Statement::Return(expression) => format!(
+            "Return(\n{}\n{})",
+            pretty_printer_expr(expression, indent_level + 1),
+            tabs(indent_level)
+        ),
     }
 }
 
 fn pretty_printer_expr(expression: &Expression, indent_level: usize) -> String {
     match expression {
-    Expression::Constant(val) => {
-        format!("{}Constant({})", tabs(indent_level), val)
-    }
-    Expression::Unary(unary, ast_node) => {
-        let mut output = format!("{}Unary(", tabs(indent_level));
-        output += match unary {
-            Unary::Complement => "Complement",
-            Unary::Negate => "Negate",
-        };
-        output += &format!(")\n{}", pretty_printer_expr(ast_node, indent_level));
-        output
-    }
+        Expression::Constant(val) => {
+            format!("{}Constant({})", tabs(indent_level), val)
+        }
+        Expression::Unary(unary, ast_node) => {
+            let mut output = format!("{}Unary(", tabs(indent_level));
+            output += match unary {
+                Unary::Complement => "Complement",
+                Unary::Negate => "Negate",
+            };
+            output += &format!(")\n{}", pretty_printer_expr(ast_node, indent_level));
+            output
+        }
     }
 }
 

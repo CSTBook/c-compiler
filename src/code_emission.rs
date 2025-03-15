@@ -18,10 +18,9 @@ fn code_gen(program: AsmNode) -> String {
                 // output += &format!("\n{}", code_gen(instruction));
             }
             output
-        }
-        // AsmNode::Mov(src, dest) => format!("\tmovl {},{}", code_gen(*src), code_gen(*dest)),
-        // AsmNode::Ret => String::from("\tret"),
-        // AsmNode::Imm(val) => format!("\t${}", val),
-        // AsmNode::Register => String::from("%eax"),
+        } // AsmNode::Mov(src, dest) => format!("\tmovl {},{}", code_gen(*src), code_gen(*dest)),
+          // AsmNode::Ret => String::from("\tret"),
+          // AsmNode::Imm(val) => format!("\t${}", val),
+          // AsmNode::Register => String::from("%eax"),
     }
 }

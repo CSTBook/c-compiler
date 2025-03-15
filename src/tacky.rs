@@ -4,17 +4,17 @@ use crate::parser::{self, AstNode, Unary};
 
 pub enum TackyNode {
     Program(Box<TackyNode>),
-    Function(String, Vec<TackyInstruction>)
+    Function(String, Vec<TackyInstruction>),
 }
 
 pub enum TackyInstruction {
     Return(TackyValue),
-    Unary(Unary, TackyValue, TackyValue) //Unary(unop, src, dest) where dest must be a temp var
+    Unary(Unary, TackyValue, TackyValue), //Unary(unop, src, dest) where dest must be a temp var
 }
 
 pub enum TackyValue {
     Constant(i32),
-    Var(String)
+    Var(String),
 }
 
 static TEMP_COUNTER: Mutex<i32> = Mutex::new(0);
@@ -39,26 +39,33 @@ fn parse_function(function_ast: AstNode) -> TackyNode {
 
 fn parse_instructions(instructions_ast: parser::Statement) -> Vec<TackyInstruction> {
     let mut instructions: Vec<TackyInstruction> = Vec::new();
-    if let parser::Statement::Return(exp) = instructions_ast {
-        parse_exp(exp, &mut instructions);
+    match instructions_ast {
+        parser::Statement::Return(exp) => {
+            let temp = parse_exp(exp, &mut instructions);
+            instructions.push(TackyInstruction::Return(temp));
+        }
     }
     instructions
 }
 
-fn parse_exp(expression: parser::Expression, instructions: &mut Vec<TackyInstruction>) -> TackyValue {
+fn parse_exp(
+    expression: parser::Expression,
+    instructions: &mut Vec<TackyInstruction>,
+) -> TackyValue {
     match expression {
-        parser::Expression::Constant(val) => {
-            TackyValue::Constant(val)
-        },
+        parser::Expression::Constant(val) => TackyValue::Constant(val),
         parser::Expression::Unary(unop, exp) => {
             let src = parse_exp(*exp, instructions);
             let name = make_temporary_variable();
             let dest = TackyValue::Var(name.clone());
-            instructions.push(TackyInstruction::Unary(unop, src, TackyValue::Var(name.clone())));
+            instructions.push(TackyInstruction::Unary(
+                unop,
+                src,
+                TackyValue::Var(name.clone()),
+            ));
 
             dest
         }
-        _ => panic!("Tacky Expression Parser error"), // will never happen
     }
 }
 
@@ -118,7 +125,7 @@ fn pretty_printer_instr(instruction: &TackyInstruction, indent_level: usize) -> 
             };
             output += &format!(
                 ")(\n{}\n{}) in {}",
-                pretty_printer_val(src, indent_level+1),
+                pretty_printer_val(src, indent_level + 1),
                 tabs(indent_level),
                 pretty_printer_val(dest, 0)
             );
