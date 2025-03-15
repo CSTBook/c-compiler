@@ -1,8 +1,11 @@
-use std::{env, process::{exit, Command}};
-mod lexer;
-mod parser;
+use std::{
+    env,
+    process::{Command, exit},
+};
 mod assembler;
 mod code_emission;
+mod lexer;
+mod parser;
 mod tacky;
 
 #[derive(Debug)]
@@ -12,7 +15,7 @@ enum ArgOption {
     Parser,
     Codegen,
     Source,
-    Tacky
+    Tacky,
 }
 
 fn main() {
@@ -24,17 +27,35 @@ fn main() {
     let (filename, option) = arg_parser(args);
 
     //preprocess
-    Command::new("gcc").args(["-E","-P",&(filename.clone()+".c"),"-o",&(filename.clone()+".i")]).output().unwrap();
+    Command::new("gcc")
+        .args([
+            "-E",
+            "-P",
+            &(filename.clone() + ".c"),
+            "-o",
+            &(filename.clone() + ".i"),
+        ])
+        .output()
+        .unwrap();
 
     //compile
     let assembly_file = compile(filename.clone(), option);
-    Command::new("rm").arg(filename.clone()+".i").output().unwrap();
-    
+    Command::new("rm")
+        .arg(filename.clone() + ".i")
+        .output()
+        .unwrap();
+
     //linker
     if !assembly_file.is_empty() {
-        Command::new("gcc").args([assembly_file.clone(),"-o".to_string(),filename.clone()]).output().unwrap();
-        println!("Output file at {}",filename.clone());
-        Command::new("rm").arg(assembly_file.clone()).output().unwrap();
+        Command::new("gcc")
+            .args([assembly_file.clone(), "-o".to_string(), filename.clone()])
+            .output()
+            .unwrap();
+        println!("Output file at {}", filename.clone());
+        Command::new("rm")
+            .arg(assembly_file.clone())
+            .output()
+            .unwrap();
     }
 
     exit(0);
@@ -46,20 +67,20 @@ fn arg_parser(args: Vec<String>) -> (String, ArgOption) {
     let mut filename = args[1].split(".").next().unwrap().to_string();
 
     let option;
-    if args.len()>=3 {
+    if args.len() >= 3 {
         option = match args[1].as_str() {
             "--lex" => ArgOption::Lex,
             "--parse" => ArgOption::Parser,
             "--codegen" => ArgOption::Codegen,
             "-S" => ArgOption::Source,
             "--tacky" => ArgOption::Tacky,
-            _ => ArgOption::None
+            _ => ArgOption::None,
         };
         filename = args[2].split(".").next().unwrap().to_string();
     } else {
         option = ArgOption::None;
     }
-    println!("Filename: {}.c",filename);
+    println!("Filename: {}.c", filename);
 
     println!("Option passed: {:?}", option);
 
@@ -70,41 +91,44 @@ fn compile(filename: String, option: ArgOption) -> String {
     match option {
         ArgOption::Lex => {
             let tokens = lexer::lexer(filename.clone());
-            println!("{:?}",tokens);
+            println!("{:?}", tokens);
             String::new()
-        },
+        }
         ArgOption::Parser => {
             let tokens = lexer::lexer(filename.clone());
             let parsed_program = parser::parser(tokens);
-            println!("{}",parser::pretty_printer(&parsed_program, 0));
+            println!("{}", parser::pretty_printer(&parsed_program, 0));
             String::new()
-        },
-        ArgOption::Codegen => {
-            let tokens = lexer::lexer(filename.clone());
-            let parsed_program = parser::parser(tokens);
-            let asm_program = assembler::assembler(parsed_program);
-            println!("{}",assembler::pretty_printer(&asm_program, 0));
-            String::new()
-        },
-        ArgOption::None => {
-            let tokens = lexer::lexer(filename.clone());
-            let parsed_program = parser::parser(tokens);
-            let asm_program = assembler::assembler(parsed_program);
-            code_emission::code_emission(asm_program, filename)
-        },
-        ArgOption::Source => {
-            let tokens = lexer::lexer(filename.clone());
-            let parsed_program = parser::parser(tokens);
-            let asm_program = assembler::assembler(parsed_program);
-            code_emission::code_emission(asm_program, filename);
-            String::new()
-        },
+        }
         ArgOption::Tacky => {
             let tokens = lexer::lexer(filename.clone());
             let parsed_program = parser::parser(tokens);
             let tacky_program = tacky::emit_tacky(parsed_program);
-            println!("{}",tacky::pretty_printer(&tacky_program, 0));
+            println!("{}", tacky::pretty_printer(&tacky_program, 0));
             String::new()
+        }
+        ArgOption::Codegen => {
+            let tokens = lexer::lexer(filename.clone());
+            let parsed_program = parser::parser(tokens);
+            let tacky_program = tacky::emit_tacky(parsed_program);
+            let asm_program = assembler::assembler(tacky_program);
+            println!("{}", assembler::pretty_printer(&asm_program, 0));
+            String::new()
+        }
+        ArgOption::Source => {
+            let tokens = lexer::lexer(filename.clone());
+            let parsed_program = parser::parser(tokens);
+            let tacky_program = tacky::emit_tacky(parsed_program);
+            let asm_program = assembler::assembler(tacky_program);
+            code_emission::code_emission(asm_program, filename);
+            String::new()
+        }
+        ArgOption::None => {
+            let tokens = lexer::lexer(filename.clone());
+            let parsed_program = parser::parser(tokens);
+            let tacky_program = tacky::emit_tacky(parsed_program);
+            let asm_program = assembler::assembler(tacky_program);
+            code_emission::code_emission(asm_program, filename)
         }
     }
 }

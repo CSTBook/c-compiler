@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["--parse", "test_files/main.c"],
+            "args": ["--codegen", "test_files/main.c"],
             "cwd": "${workspaceFolder}"
         },
         {
