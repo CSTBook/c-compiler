@@ -6,6 +6,7 @@ mod assembler;
 mod code_emission;
 mod lexer;
 mod parser;
+mod pretty_printer;
 mod tacky;
 
 #[derive(Debug)]
@@ -97,14 +98,20 @@ fn compile(filename: String, option: ArgOption) -> String {
         ArgOption::Parser => {
             let tokens = lexer::lexer(filename.clone());
             let parsed_program = parser::parser(tokens);
-            println!("{}", parser::pretty_printer(&parsed_program, 0));
+            println!(
+                "{}",
+                pretty_printer::parser::pretty_printer(&parsed_program, 0)
+            );
             String::new()
         }
         ArgOption::Tacky => {
             let tokens = lexer::lexer(filename.clone());
             let parsed_program = parser::parser(tokens);
             let tacky_program = tacky::emit_tacky(parsed_program);
-            println!("{}", tacky::pretty_printer(&tacky_program, 0));
+            println!(
+                "{}",
+                pretty_printer::tacky::pretty_printer(&tacky_program, 0)
+            );
             String::new()
         }
         ArgOption::Codegen => {
@@ -112,7 +119,10 @@ fn compile(filename: String, option: ArgOption) -> String {
             let parsed_program = parser::parser(tokens);
             let tacky_program = tacky::emit_tacky(parsed_program);
             let asm_program = assembler::assembler(tacky_program);
-            println!("{}", assembler::pretty_printer(&asm_program, 0));
+            println!(
+                "{}",
+                pretty_printer::assembler::pretty_printer(&asm_program, 0)
+            );
             String::new()
         }
         ArgOption::Source => {

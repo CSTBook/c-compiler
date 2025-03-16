@@ -135,6 +135,14 @@ fn parse_instruction(tacky_instructions: Vec<TackyInstruction>) -> Vec<Instructi
                         parse_operand(&dst),
                     ));
                 }
+                parser::BinaryParser::And => todo!(),
+                parser::BinaryParser::Or => todo!(),
+                parser::BinaryParser::Equal => todo!(),
+                parser::BinaryParser::NotEqual => todo!(),
+                parser::BinaryParser::LessThan => todo!(),
+                parser::BinaryParser::LessOrEqual => todo!(),
+                parser::BinaryParser::GreaterThan => todo!(),
+                parser::BinaryParser::GreaterOrEqual => todo!(),
             },
         }
     }
@@ -153,6 +161,7 @@ fn parse_unop(unop: parser::UnaryParser) -> UnaryOp {
     match unop {
         parser::UnaryParser::Complement => UnaryOp::Not,
         parser::UnaryParser::Negate => UnaryOp::Neg,
+        parser::UnaryParser::Not => todo!(),
     }
 }
 
@@ -378,113 +387,4 @@ fn fix_instructions(offset: i32, program: &mut AsmNode) {
             }
         }
     }
-}
-
-#[allow(dead_code)]
-pub fn pretty_printer(node: &AsmNode, indent_level: usize) -> String {
-    match node {
-        AsmNode::Program(func) => {
-            format!(
-                "{}Program(\n{}{}\n{})",
-                tabs(indent_level),
-                tabs(indent_level),
-                pretty_printer(func, indent_level + 1),
-                tabs(indent_level)
-            )
-        }
-        AsmNode::Function(name, instructions) => {
-            let mut output = format!(
-                "{}Function(\n{}name=\"{}\"\n{}body=(",
-                tabs(indent_level),
-                tabs(indent_level + 1),
-                name,
-                tabs(indent_level + 1)
-            );
-            for instruction in instructions {
-                output += &format!("\n{}", pretty_printer_instr(instruction, indent_level + 2));
-            }
-            output += &format!("\n{})\n{})", tabs(indent_level + 1), tabs(indent_level));
-            output
-        }
-    }
-}
-
-#[allow(dead_code)]
-fn pretty_printer_instr(instruction: &Instruction, indent_level: usize) -> String {
-    match instruction {
-        Instruction::Mov(src, dest) => {
-            format!(
-                "{}Mov({},{})",
-                tabs(indent_level),
-                pretty_printer_opr(src),
-                pretty_printer_opr(dest)
-            )
-        }
-        Instruction::Unary(unop, operand) => format!(
-            "{}{}({})",
-            tabs(indent_level),
-            pretty_printer_unop(unop),
-            pretty_printer_opr(operand)
-        ),
-        Instruction::AllocateStack(val) => format!("{}AllocateStack({})", tabs(indent_level), *val),
-        Instruction::Ret => format!("{}Ret", tabs(indent_level)),
-        Instruction::Binary(binop, src, dst) => format!(
-            "{}{}({},{})",
-            tabs(indent_level),
-            pretty_printer_binop(binop),
-            pretty_printer_opr(src),
-            pretty_printer_opr(dst)
-        ),
-        Instruction::Idiv(operand) => format!(
-            "{}Idiv({})",
-            tabs(indent_level),
-            pretty_printer_opr(operand)
-        ),
-        Instruction::Cdq => format!("{}Cdq", tabs(indent_level)),
-    }
-}
-
-fn pretty_printer_unop(unop: &UnaryOp) -> String {
-    match unop {
-        UnaryOp::Neg => String::from("Neg"),
-        UnaryOp::Not => String::from("Not"),
-    }
-}
-
-fn pretty_printer_binop(binop: &BinaryOp) -> String {
-    match binop {
-        BinaryOp::Add => String::from("Add"),
-        BinaryOp::Sub => String::from("Sub"),
-        BinaryOp::Mult => String::from("Mult"),
-        BinaryOp::BitwiseAnd => String::from("BitwiseAnd"),
-        BinaryOp::BitwiseOr => String::from("BitwiseOr"),
-        BinaryOp::BitwiseXor => String::from("BitwiseXor"),
-        BinaryOp::BitwiseLeftShift => String::from("BitwiseLeftShift"),
-        BinaryOp::BitwiseRightShift => String::from("BitwiseRightShift"),
-    }
-}
-
-fn pretty_printer_opr(operand: &Operand) -> String {
-    match operand {
-        Operand::Imm(val) => format!("Imm({})", *val),
-        Operand::Reg(register) => format!("Reg({})", pretty_printer_reg(register)),
-        Operand::Pseudo(name) => format!("Var({})", name),
-        Operand::Stack(val) => format!("Stack({})", *val),
-    }
-}
-
-fn pretty_printer_reg(register: &Register) -> String {
-    match register {
-        Register::AX => String::from("AX"),
-        Register::R10 => String::from("R10"),
-        Register::DX => String::from("DX"),
-        Register::R11 => String::from("R11"),
-        Register::CX => String::from("CX"),
-        Register::CL => String::from("CL"),
-    }
-}
-
-#[allow(dead_code)]
-fn tabs(indent_level: usize) -> String {
-    "  ".repeat(indent_level)
 }

@@ -35,6 +35,15 @@ pub fn lexer(filename: String) -> Vec<String> {
         r"\^",
         r"<<",
         r">>",
+        r"!",
+        r"&&",
+        r"\|\|",
+        r"==",
+        r"!=",
+        r"<",
+        r">",
+        r"<=",
+        r">=",
     ];
 
     let token_regexes: Vec<Regex> = tokens.iter().map(|x| Regex::new(x).unwrap()).collect();
@@ -65,8 +74,7 @@ pub fn lexer(filename: String) -> Vec<String> {
             break;
         }
 
-        contents =
-            String::from(&contents[token.len()..]);
+        contents = String::from(&contents[token.len()..]);
         tokens.push(token);
     }
 

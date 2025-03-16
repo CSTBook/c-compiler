@@ -16,6 +16,7 @@ pub enum Expression {
 pub enum UnaryParser {
     Complement,
     Negate,
+    Not,
 }
 
 pub enum BinaryParser {
@@ -29,6 +30,14 @@ pub enum BinaryParser {
     BitwiseXor,
     BitwiseLeftShift,
     BitwiseRightShift,
+    And,
+    Or,
+    Equal,
+    NotEqual,
+    LessThan,
+    LessOrEqual,
+    GreaterThan,
+    GreaterOrEqual,
 }
 
 pub fn parser(mut tokens: Vec<String>) -> AstNode {
@@ -81,7 +90,7 @@ fn parse_factor(tokens: &mut Vec<String>) -> Expression {
     let next_token = tokens.first().unwrap();
     if next_token.parse::<i32>().is_ok() {
         Expression::Constant(tokens.remove(0).parse::<i32>().unwrap())
-    } else if next_token == "-" || next_token == "~" {
+    } else if next_token == "-" || next_token == "~" || next_token == "!" {
         let operator = parse_unop(tokens.remove(0));
         let inner_exp = parse_factor(tokens);
         Expression::Unary(operator, Box::new(inner_exp))
@@ -107,8 +116,16 @@ fn parse_expression(tokens: &mut Vec<String>, min_precedence: i32) -> Expression
         || next_token == "|"
         || next_token == "^"
         || next_token == "&"
+        || next_token == ">>"
         || next_token == "<<"
-        || next_token == ">>")
+        || next_token == "&&"
+        || next_token == "||"
+        || next_token == "=="
+        || next_token == "!="
+        || next_token == ">"
+        || next_token == "<"
+        || next_token == ">="
+        || next_token == "<=")
         && get_precedence(next_token.to_string()) >= min_precedence
     //and the binary operator has higher precedence than the outer one
     {
@@ -123,16 +140,16 @@ fn parse_expression(tokens: &mut Vec<String>, min_precedence: i32) -> Expression
 
 fn get_precedence(token: String) -> i32 {
     match token.as_str() {
+        "||" => 3,
+        "&&" => 4,
         "|" => 5,
         "^" => 6,
         "&" => 7,
-        "<<" => 10,
-        ">>" => 10,
-        "+" => 11,
-        "-" => 11,
-        "*" => 12,
-        "/" => 12,
-        "%" => 12,
+        "==" | "!=" => 8,
+        "<" | "<=" | ">" | ">=" => 9,
+        "<<" | ">>" => 10,
+        "+" | "-" => 11,
+        "*" | "/" | "%" => 12,
         _ => unreachable!("Binary Operator Precedence Error"),
     }
 }
@@ -150,15 +167,25 @@ fn parse_binop(tokens: &mut Vec<String>) -> BinaryParser {
         "&" => BinaryParser::BitwiseAnd,
         "<<" => BinaryParser::BitwiseLeftShift,
         ">>" => BinaryParser::BitwiseRightShift,
+        "&&" => BinaryParser::And,
+        "||" => BinaryParser::Or,
+        "==" => BinaryParser::Equal,
+        "!=" => BinaryParser::NotEqual,
+        ">" => BinaryParser::GreaterThan,
+        ">=" => BinaryParser::GreaterOrEqual,
+        "<" => BinaryParser::LessThan,
+        "<=" => BinaryParser::LessOrEqual,
         _ => unreachable!("Binary Operator Parsing Error"),
     }
 }
 
 fn parse_unop(op: String) -> UnaryParser {
-    if op == "-" {
-        return UnaryParser::Negate;
+    match op.as_str() {
+        "-" => UnaryParser::Negate,
+        "~" => UnaryParser::Complement,
+        "!" => UnaryParser::Not,
+        _ => unreachable!("Invalid Unary Operator in Parser: {}", op),
     }
-    UnaryParser::Complement
 }
 
 fn expect(expected: &str, tokens: &mut Vec<String>) -> String {
@@ -167,87 +194,4 @@ fn expect(expected: &str, tokens: &mut Vec<String>) -> String {
         panic!("Found {}, expected {}", actual, expected);
     }
     tokens.remove(0)
-}
-
-#[allow(dead_code)]
-pub fn pretty_printer(node: &AstNode, indent_level: usize) -> String {
-    match node {
-        AstNode::Program(func) => {
-            format!(
-                "{}Program(\n{}{}\n{})",
-                tabs(indent_level),
-                tabs(indent_level),
-                pretty_printer(func, indent_level + 1),
-                tabs(indent_level)
-            )
-        }
-        AstNode::Function(name, statement) => {
-            format!(
-                "{}Function(\n{}name=\"{}\"\n{}body={}\n{})",
-                tabs(indent_level),
-                tabs(indent_level + 1),
-                name,
-                tabs(indent_level + 1),
-                pretty_printer_statement(statement, indent_level + 1),
-                tabs(indent_level)
-            )
-        }
-    }
-}
-
-fn pretty_printer_statement(statement: &Statement, indent_level: usize) -> String {
-    match statement {
-        Statement::Return(expression) => format!(
-            "Return(\n{}\n{})",
-            pretty_printer_expr(expression, indent_level + 1),
-            tabs(indent_level)
-        ),
-    }
-}
-
-fn pretty_printer_expr(expression: &Expression, indent_level: usize) -> String {
-    match expression {
-        Expression::Constant(val) => {
-            format!("{}Constant({})", tabs(indent_level), val)
-        }
-        Expression::Unary(unary, ast_node) => {
-            let mut output = format!("{}Unary(", tabs(indent_level));
-            output += match unary {
-                UnaryParser::Complement => "Complement",
-                UnaryParser::Negate => "Negate",
-            };
-            output += &format!(")\n{}", pretty_printer_expr(ast_node, indent_level + 1));
-            output
-        }
-        Expression::Binary(binop, left, right) => {
-            format!(
-                "{}Binary(\n{}\n{}\n{}\n{})",
-                tabs(indent_level),
-                pretty_printer_binop(binop, indent_level + 1),
-                pretty_printer_expr(left, indent_level + 1),
-                pretty_printer_expr(right, indent_level + 1),
-                tabs(indent_level)
-            )
-        }
-    }
-}
-
-fn pretty_printer_binop(binop: &BinaryParser, indent_level: usize) -> String {
-    match binop {
-        BinaryParser::Add => format!("{}Add,", tabs(indent_level)),
-        BinaryParser::Subtract => format!("{}Subtract,", tabs(indent_level)),
-        BinaryParser::Multiply => format!("{}Multiply,", tabs(indent_level)),
-        BinaryParser::Divide => format!("{}Divide,", tabs(indent_level)),
-        BinaryParser::Remainder => format!("{}Remainder,", tabs(indent_level)),
-        BinaryParser::BitwiseAnd => format!("{}BitwiseAnd", tabs(indent_level)),
-        BinaryParser::BitwiseOr => format!("{}BitwiseOr", tabs(indent_level)),
-        BinaryParser::BitwiseXor => format!("{}BitwiseXor", tabs(indent_level)),
-        BinaryParser::BitwiseLeftShift => format!("{}BitwiseRightShift", tabs(indent_level)),
-        BinaryParser::BitwiseRightShift => format!("{}BitwiseLeftShift", tabs(indent_level)),
-    }
-}
-
-#[allow(dead_code)]
-fn tabs(indent_level: usize) -> String {
-    "  ".repeat(indent_level)
 }
