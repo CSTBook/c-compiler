@@ -33,8 +33,13 @@ fn code_gen_instr(instruction: Instruction) -> String {
         }
         Instruction::AllocateStack(bytes) => format!("\tsubq\t${}, %rsp", bytes),
         Instruction::Ret => String::from("\tmovq\t%rbp, %rsp\n\tpopq\t%rbp\n\tret"),
-        Instruction::Binary(binop, src, dst) => format!("\t{}\t{}, {}",code_gen_binop(binop),code_gen_op(src),code_gen_op(dst)),
-        Instruction::Idiv(operand) => format!("\tidivl\t{}",code_gen_op(operand)),
+        Instruction::Binary(binop, src, dst) => format!(
+            "\t{}\t{}, {}",
+            code_gen_binop(binop),
+            code_gen_op(src),
+            code_gen_op(dst)
+        ),
+        Instruction::Idiv(operand) => format!("\tidivl\t{}", code_gen_op(operand)),
         Instruction::Cdq => String::from("\tcdq"),
     }
 }
@@ -47,6 +52,8 @@ fn code_gen_op(operand: Operand) -> String {
             crate::assembler::Register::R10 => String::from("%r10d"),
             crate::assembler::Register::DX => String::from("%edx"),
             crate::assembler::Register::R11 => String::from("%r11d"),
+            crate::assembler::Register::CX => String::from("%ecx"),
+            crate::assembler::Register::CL => String::from("%cl"),
         },
         Operand::Stack(bytes) => format!("{}(%rbp)", bytes),
         Operand::Pseudo(_) => unreachable!("Pseudoregister not removed"),
@@ -65,5 +72,10 @@ fn code_gen_binop(binop: BinaryOp) -> String {
         BinaryOp::Add => String::from("addl"),
         BinaryOp::Sub => String::from("subl"),
         BinaryOp::Mult => String::from("imull"),
+        BinaryOp::BitwiseAnd => String::from("andl"),
+        BinaryOp::BitwiseOr => String::from("orl "),
+        BinaryOp::BitwiseXor => String::from("xorl"),
+        BinaryOp::BitwiseLeftShift => String::from("sall"),
+        BinaryOp::BitwiseRightShift => String::from("sarl"),
     }
 }

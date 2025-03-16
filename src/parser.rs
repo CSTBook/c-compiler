@@ -24,6 +24,11 @@ pub enum BinaryParser {
     Multiply,
     Divide,
     Remainder,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    BitwiseLeftShift,
+    BitwiseRightShift,
 }
 
 pub fn parser(mut tokens: Vec<String>) -> AstNode {
@@ -98,7 +103,12 @@ fn parse_expression(tokens: &mut Vec<String>, min_precedence: i32) -> Expression
         || next_token == "-"
         || next_token == "*"
         || next_token == "/"
-        || next_token == "%")
+        || next_token == "%"
+        || next_token == "|"
+        || next_token == "^"
+        || next_token == "&"
+        || next_token == "<<"
+        || next_token == ">>")
         && get_precedence(next_token.to_string()) >= min_precedence
     //and the binary operator has higher precedence than the outer one
     {
@@ -113,11 +123,16 @@ fn parse_expression(tokens: &mut Vec<String>, min_precedence: i32) -> Expression
 
 fn get_precedence(token: String) -> i32 {
     match token.as_str() {
-        "+" => 45,
-        "-" => 45,
-        "*" => 50,
-        "/" => 50,
-        "%" => 50,
+        "|" => 5,
+        "^" => 6,
+        "&" => 7,
+        "<<" => 10,
+        ">>" => 10,
+        "+" => 11,
+        "-" => 11,
+        "*" => 12,
+        "/" => 12,
+        "%" => 12,
         _ => unreachable!("Binary Operator Precedence Error"),
     }
 }
@@ -130,6 +145,11 @@ fn parse_binop(tokens: &mut Vec<String>) -> BinaryParser {
         "*" => BinaryParser::Multiply,
         "/" => BinaryParser::Divide,
         "%" => BinaryParser::Remainder,
+        "|" => BinaryParser::BitwiseOr,
+        "^" => BinaryParser::BitwiseXor,
+        "&" => BinaryParser::BitwiseAnd,
+        "<<" => BinaryParser::BitwiseLeftShift,
+        ">>" => BinaryParser::BitwiseRightShift,
         _ => unreachable!("Binary Operator Parsing Error"),
     }
 }
@@ -219,6 +239,11 @@ fn pretty_printer_binop(binop: &BinaryParser, indent_level: usize) -> String {
         BinaryParser::Multiply => format!("{}Multiply,", tabs(indent_level)),
         BinaryParser::Divide => format!("{}Divide,", tabs(indent_level)),
         BinaryParser::Remainder => format!("{}Remainder,", tabs(indent_level)),
+        BinaryParser::BitwiseAnd => format!("{}BitwiseAnd", tabs(indent_level)),
+        BinaryParser::BitwiseOr => format!("{}BitwiseOr", tabs(indent_level)),
+        BinaryParser::BitwiseXor => format!("{}BitwiseXor", tabs(indent_level)),
+        BinaryParser::BitwiseLeftShift => format!("{}BitwiseRightShift", tabs(indent_level)),
+        BinaryParser::BitwiseRightShift => format!("{}BitwiseLeftShift", tabs(indent_level)),
     }
 }
 

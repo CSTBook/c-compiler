@@ -154,6 +154,11 @@ fn pretty_printer_instr(instruction: &TackyInstruction, indent_level: usize) -> 
                 BinaryParser::Multiply => "Multiply",
                 BinaryParser::Divide => "Divide",
                 BinaryParser::Remainder => "Remainder",
+                BinaryParser::BitwiseAnd => "BitwiseAnd",
+                BinaryParser::BitwiseOr => "BitwiseOr",
+                BinaryParser::BitwiseXor => "BitwiseXor",
+                BinaryParser::BitwiseLeftShift => "BitwiseLeftShift",
+                BinaryParser::BitwiseRightShift => "BitwiseRightShift",
             };
             output += &format!(
                 ")(\n{}\n{}\n{}) in {}",

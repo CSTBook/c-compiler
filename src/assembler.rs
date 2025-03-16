@@ -18,6 +18,8 @@ pub enum UnaryOp {
 #[derive(Clone, PartialEq)]
 pub enum Register {
     AX,
+    CX,
+    CL,
     DX,
     R10,
     R11,
@@ -46,6 +48,11 @@ pub enum BinaryOp {
     Add,
     Sub,
     Mult,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    BitwiseLeftShift,
+    BitwiseRightShift,
 }
 
 pub fn assembler(program_ast: TackyNode) -> AsmNode {
@@ -91,7 +98,12 @@ fn parse_instruction(tacky_instructions: Vec<TackyInstruction>) -> Vec<Instructi
             TackyInstruction::Binary(binop, src1, src2, dst) => match binop {
                 parser::BinaryParser::Add
                 | parser::BinaryParser::Multiply
-                | parser::BinaryParser::Subtract => {
+                | parser::BinaryParser::Subtract
+                | parser::BinaryParser::BitwiseAnd
+                | parser::BinaryParser::BitwiseOr
+                | parser::BinaryParser::BitwiseXor
+                | parser::BinaryParser::BitwiseLeftShift
+                | parser::BinaryParser::BitwiseRightShift => {
                     instructions.push(Instruction::Mov(parse_operand(&src1), parse_operand(&dst)));
                     instructions.push(Instruction::Binary(
                         parse_binop(binop),
@@ -149,6 +161,11 @@ fn parse_binop(binop: parser::BinaryParser) -> BinaryOp {
         parser::BinaryParser::Add => BinaryOp::Add,
         parser::BinaryParser::Subtract => BinaryOp::Sub,
         parser::BinaryParser::Multiply => BinaryOp::Mult,
+        parser::BinaryParser::BitwiseAnd => BinaryOp::BitwiseAnd,
+        parser::BinaryParser::BitwiseOr => BinaryOp::BitwiseOr,
+        parser::BinaryParser::BitwiseXor => BinaryOp::BitwiseXor,
+        parser::BinaryParser::BitwiseLeftShift => BinaryOp::BitwiseLeftShift,
+        parser::BinaryParser::BitwiseRightShift => BinaryOp::BitwiseRightShift,
         _ => unreachable!("Binop Assembler Error"),
     }
 }
@@ -188,7 +205,7 @@ fn replace_pseudoregister(program: &mut AsmNode) -> i32 {
         }
     }
 
-    -4 * (temp_vars.len() as i32)
+    4 * (temp_vars.len() as i32)
 }
 
 fn replace_operand(operand: &Operand, temp_vars: &mut HashMap<String, i32>) -> Operand {
@@ -209,7 +226,6 @@ fn fix_instructions(offset: i32, program: &mut AsmNode) {
         if let AsmNode::Function(_, ref mut instructions) = **func {
             instructions.insert(0, Instruction::AllocateStack(offset));
             let mut instructions_clone = instructions.clone();
-            // let mut max_len=instructions.clone().len();
             for index in (1..instructions_clone.len()).rev() {
                 match instructions_clone.get(index).unwrap() {
                     Instruction::Mov(src, dst) => {
@@ -226,7 +242,7 @@ fn fix_instructions(offset: i32, program: &mut AsmNode) {
                             );
                             instructions_clone = instructions.clone();
                         }
-                    },
+                    }
                     Instruction::Binary(binop, src, dst) => match binop {
                         BinaryOp::Add | BinaryOp::Sub => {
                             if let (Operand::Stack(_), Operand::Stack(_)) = (src, dst) {
@@ -246,7 +262,7 @@ fn fix_instructions(offset: i32, program: &mut AsmNode) {
                                 );
                                 instructions_clone = instructions.clone();
                             }
-                        },
+                        }
                         BinaryOp::Mult => {
                             if let Operand::Stack(_) = dst {
                                 instructions.remove(index);
@@ -269,6 +285,73 @@ fn fix_instructions(offset: i32, program: &mut AsmNode) {
                                 );
                                 instructions_clone = instructions.clone();
                             }
+                        }
+                        BinaryOp::BitwiseAnd | BinaryOp::BitwiseOr | BinaryOp::BitwiseXor => {
+                            //dest can be register or stack
+                            if let Operand::Imm(val) = dst {
+                                instructions.remove(index);
+                                instructions.insert(
+                                    index,
+                                    Instruction::Mov(
+                                        Operand::Imm(*val),
+                                        Operand::Reg(Register::R11),
+                                    ),
+                                );
+                                instructions.insert(
+                                    index + 1,
+                                    Instruction::Binary(
+                                        binop.clone(),
+                                        src.clone(),
+                                        Operand::Reg(Register::R11),
+                                    ),
+                                );
+                            }
+                            if let (Operand::Stack(_), Operand::Stack(_)) = (src, dst) {
+                                instructions.remove(index);
+                                instructions.insert(
+                                    index,
+                                    Instruction::Mov(src.clone(), Operand::Reg(Register::R10)),
+                                );
+                                instructions.insert(
+                                    index + 1,
+                                    Instruction::Binary(
+                                        binop.clone(),
+                                        Operand::Reg(Register::R10),
+                                        dst.clone(),
+                                    ),
+                                );
+                            }
+                            instructions_clone = instructions.clone();
+                        }
+                        BinaryOp::BitwiseRightShift | BinaryOp::BitwiseLeftShift => {
+                            //src(count) is an imm or CL register, dst is register or stack
+                            match src {
+                                Operand::Stack(_) | Operand::Reg(_) => {
+                                    instructions.remove(index);
+                                    //use R11 since we are moving the destination rather than the source
+                                    instructions.insert(
+                                        index,
+                                        Instruction::Mov(src.clone(), Operand::Reg(Register::CX)),
+                                    );
+                                    instructions.insert(
+                                        index+1,
+                                        Instruction::Binary(binop.clone(), Operand::Reg(Register::CL), dst.clone())
+                                    );
+                                }
+                                _ => ()
+                            }
+                            if let Operand::Imm(_) = dst {
+                                instructions.remove(index);
+                                instructions.insert(
+                                    index,
+                                    Instruction::Binary(binop.clone(), src.clone(), Operand::Reg(Register::R10))
+                                );
+                                instructions.insert(
+                                    index+1,
+                                    Instruction::Mov(Operand::Reg(Register::R10),dst.clone()),
+                                );
+                            }
+                            instructions_clone = instructions.clone();
                         }
                     },
                     Instruction::Idiv(Operand::Imm(val)) => {
@@ -365,6 +448,11 @@ fn pretty_printer_binop(binop: &BinaryOp) -> String {
         BinaryOp::Add => String::from("Add"),
         BinaryOp::Sub => String::from("Sub"),
         BinaryOp::Mult => String::from("Mult"),
+        BinaryOp::BitwiseAnd => String::from("BitwiseAnd"),
+        BinaryOp::BitwiseOr => String::from("BitwiseOr"),
+        BinaryOp::BitwiseXor => String::from("BitwiseXor"),
+        BinaryOp::BitwiseLeftShift => String::from("BitwiseLeftShift"),
+        BinaryOp::BitwiseRightShift => String::from("BitwiseRightShift"),
     }
 }
 
@@ -383,6 +471,8 @@ fn pretty_printer_reg(register: &Register) -> String {
         Register::R10 => String::from("R10"),
         Register::DX => String::from("DX"),
         Register::R11 => String::from("R11"),
+        Register::CX => String::from("CX"),
+        Register::CL => String::from("CL"),
     }
 }
 
