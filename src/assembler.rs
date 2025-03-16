@@ -334,21 +334,29 @@ fn fix_instructions(offset: i32, program: &mut AsmNode) {
                                         Instruction::Mov(src.clone(), Operand::Reg(Register::CX)),
                                     );
                                     instructions.insert(
-                                        index+1,
-                                        Instruction::Binary(binop.clone(), Operand::Reg(Register::CL), dst.clone())
+                                        index + 1,
+                                        Instruction::Binary(
+                                            binop.clone(),
+                                            Operand::Reg(Register::CL),
+                                            dst.clone(),
+                                        ),
                                     );
                                 }
-                                _ => ()
+                                _ => (),
                             }
                             if let Operand::Imm(_) = dst {
                                 instructions.remove(index);
                                 instructions.insert(
                                     index,
-                                    Instruction::Binary(binop.clone(), src.clone(), Operand::Reg(Register::R10))
+                                    Instruction::Binary(
+                                        binop.clone(),
+                                        src.clone(),
+                                        Operand::Reg(Register::R10),
+                                    ),
                                 );
                                 instructions.insert(
-                                    index+1,
-                                    Instruction::Mov(Operand::Reg(Register::R10),dst.clone()),
+                                    index + 1,
+                                    Instruction::Mov(Operand::Reg(Register::R10), dst.clone()),
                                 );
                             }
                             instructions_clone = instructions.clone();

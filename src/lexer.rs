@@ -8,10 +8,11 @@ fn read_file(filename: String) -> String {
         .unwrap_or_else(|_| panic!("Could not read file {} from lexer", &filename))
 }
 
+//TODO: optimize the lexer
 pub fn lexer(filename: String) -> Vec<String> {
     let mut contents = read_file(filename);
 
-    let token_regexes = vec![
+    let tokens = vec![
         r"int\b",
         r"void\b",
         r"return\b",
@@ -36,41 +37,37 @@ pub fn lexer(filename: String) -> Vec<String> {
         r">>",
     ];
 
+    let token_regexes: Vec<Regex> = tokens.iter().map(|x| Regex::new(x).unwrap()).collect();
+
     let mut tokens: Vec<String> = Vec::new();
 
     while !contents.is_empty() {
         //trim whitespace at start
         contents = contents.trim_start().to_string();
 
-        let mut valid_tokens = Vec::new();
+        let mut token = String::new();
 
         for regex_token in &token_regexes {
-            let re = Regex::new(regex_token).unwrap();
-            if let Some(mat) = re.find(&contents) {
+            if let Some(mat) = regex_token.find(&contents) {
                 if contents.find(mat.as_str()).unwrap() != 0 {
                     continue;
                 }
-                valid_tokens.push(mat.as_str().to_string());
+                if mat.as_str().len() > token.len() {
+                    token = mat.as_str().to_string();
+                }
             }
         }
 
-        if valid_tokens.is_empty() && !contents.is_empty() {
-            panic!("invalid token found in {}", contents);
-        }
-        if valid_tokens.is_empty() {
+        if token.is_empty() {
+            if !contents.is_empty() {
+                panic!("Invalid token found in {}", contents)
+            }
             break;
         }
 
-        let mut longest_token = valid_tokens.first().unwrap().to_string();
-        for token in &valid_tokens {
-            if token.len() > longest_token.len() {
-                longest_token = token.clone();
-            }
-        }
-
         contents =
-            String::from(&contents[contents.find(&longest_token).unwrap() + longest_token.len()..]);
-        tokens.push(longest_token);
+            String::from(&contents[token.len()..]);
+        tokens.push(token);
     }
 
     tokens
