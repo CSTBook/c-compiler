@@ -25,6 +25,10 @@ pub fn lexer(filename: String) -> Vec<String> {
         r"~",
         r"-",
         r"--",
+        r"\+",
+        r"\*",
+        r"\/",
+        r"%",
     ];
 
     let mut tokens: Vec<String> = Vec::new();

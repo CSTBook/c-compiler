@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use crate::parser::{self, AstNode, Unary};
+use crate::parser::{self, AstNode, BinaryParser, UnaryParser};
 
 pub enum TackyNode {
     Program(Box<TackyNode>),
@@ -9,7 +9,8 @@ pub enum TackyNode {
 
 pub enum TackyInstruction {
     Return(TackyValue),
-    Unary(Unary, TackyValue, TackyValue), //Unary(unop, src, dest) where dest must be a temp var
+    Unary(UnaryParser, TackyValue, TackyValue), //Unary(unop, src, dest) where dest must be a temp var
+    Binary(BinaryParser, TackyValue, TackyValue, TackyValue), //Binary(binop, src1, src2, dst)
 }
 
 pub enum TackyValue {
@@ -66,6 +67,20 @@ fn parse_exp(
 
             dest
         }
+        parser::Expression::Binary(binop, val1, val2) => {
+            let src1 = parse_exp(*val1, instructions);
+            let src2 = parse_exp(*val2, instructions);
+            let name = make_temporary_variable();
+            let dst = TackyValue::Var(name.clone());
+            instructions.push(TackyInstruction::Binary(
+                binop,
+                src1,
+                src2,
+                TackyValue::Var(name),
+            ));
+
+            dst
+        }
     }
 }
 
@@ -120,14 +135,32 @@ fn pretty_printer_instr(instruction: &TackyInstruction, indent_level: usize) -> 
         TackyInstruction::Unary(unary, src, dest) => {
             let mut output = format!("{}Unary(", tabs(indent_level));
             output += match unary {
-                Unary::Complement => "Complement",
-                Unary::Negate => "Negate",
+                UnaryParser::Complement => "Complement",
+                UnaryParser::Negate => "Negate",
             };
             output += &format!(
                 ")(\n{}\n{}) in {}",
                 pretty_printer_val(src, indent_level + 1),
                 tabs(indent_level),
                 pretty_printer_val(dest, 0)
+            );
+            output
+        }
+        TackyInstruction::Binary(binop, src1, src2, dst) => {
+            let mut output = format!("{}Binary(", tabs(indent_level));
+            output += match binop {
+                BinaryParser::Add => "Add",
+                BinaryParser::Subtract => "Subtract",
+                BinaryParser::Multiply => "Multiply",
+                BinaryParser::Divide => "Divide",
+                BinaryParser::Remainder => "Remainder",
+            };
+            output += &format!(
+                ")(\n{}\n{}\n{}) in {}",
+                pretty_printer_val(src1, indent_level + 1),
+                pretty_printer_val(src2, indent_level + 1),
+                tabs(indent_level),
+                pretty_printer_val(dst, 0)
             );
             output
         }

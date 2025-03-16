@@ -9,12 +9,21 @@ pub enum Statement {
 }
 pub enum Expression {
     Constant(i32),
-    Unary(Unary, Box<Expression>),
+    Unary(UnaryParser, Box<Expression>),
+    Binary(BinaryParser, Box<Expression>, Box<Expression>),
 }
 #[derive(PartialEq, Eq, Debug)]
-pub enum Unary {
+pub enum UnaryParser {
     Complement,
     Negate,
+}
+
+pub enum BinaryParser {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Remainder,
 }
 
 pub fn parser(mut tokens: Vec<String>) -> AstNode {
@@ -58,22 +67,22 @@ fn check_name(name: &String) {
 
 fn parse_statement(tokens: &mut Vec<String>) -> Statement {
     expect("return", tokens);
-    let exp = parse_expression(tokens);
+    let exp = parse_expression(tokens, 0);
     expect(";", tokens);
     Statement::Return(exp)
 }
 
-fn parse_expression(tokens: &mut Vec<String>) -> Expression {
+fn parse_factor(tokens: &mut Vec<String>) -> Expression {
     let next_token = tokens.first().unwrap();
     if next_token.parse::<i32>().is_ok() {
         Expression::Constant(tokens.remove(0).parse::<i32>().unwrap())
     } else if next_token == "-" || next_token == "~" {
         let operator = parse_unop(tokens.remove(0));
-        let inner_exp = parse_expression(tokens);
+        let inner_exp = parse_factor(tokens);
         Expression::Unary(operator, Box::new(inner_exp))
     } else if next_token == "(" {
         tokens.remove(0);
-        let inner_exp = parse_expression(tokens);
+        let inner_exp = parse_expression(tokens, 0);
         expect(")", tokens);
         inner_exp
     } else {
@@ -82,11 +91,54 @@ fn parse_expression(tokens: &mut Vec<String>) -> Expression {
     }
 }
 
-fn parse_unop(op: String) -> Unary {
-    if op == "-" {
-        return Unary::Negate;
+fn parse_expression(tokens: &mut Vec<String>, min_precedence: i32) -> Expression {
+    let mut left = parse_factor(tokens);
+    let mut next_token = tokens.first().unwrap().clone();
+    while (next_token == "+" // only if we have a binary operator
+        || next_token == "-"
+        || next_token == "*"
+        || next_token == "/"
+        || next_token == "%")
+        && get_precedence(next_token.to_string()) >= min_precedence
+    //and the binary operator has higher precedence than the outer one
+    {
+        let operator = parse_binop(tokens);
+        let right = parse_expression(tokens, get_precedence(next_token.to_string()) + 1); //so that we get left associativity
+        left = Expression::Binary(operator, Box::new(left), Box::new(right));
+        next_token = tokens.first().unwrap().clone();
     }
-    Unary::Complement
+
+    left
+}
+
+fn get_precedence(token: String) -> i32 {
+    match token.as_str() {
+        "+" => 45,
+        "-" => 45,
+        "*" => 50,
+        "/" => 50,
+        "%" => 50,
+        _ => unreachable!("Binary Operator Precedence Error"),
+    }
+}
+
+fn parse_binop(tokens: &mut Vec<String>) -> BinaryParser {
+    let binop = tokens.remove(0);
+    match binop.as_str() {
+        "+" => BinaryParser::Add,
+        "-" => BinaryParser::Subtract,
+        "*" => BinaryParser::Multiply,
+        "/" => BinaryParser::Divide,
+        "%" => BinaryParser::Remainder,
+        _ => unreachable!("Binary Operator Parsing Error"),
+    }
+}
+
+fn parse_unop(op: String) -> UnaryParser {
+    if op == "-" {
+        return UnaryParser::Negate;
+    }
+    UnaryParser::Complement
 }
 
 fn expect(expected: &str, tokens: &mut Vec<String>) -> String {
@@ -141,12 +193,32 @@ fn pretty_printer_expr(expression: &Expression, indent_level: usize) -> String {
         Expression::Unary(unary, ast_node) => {
             let mut output = format!("{}Unary(", tabs(indent_level));
             output += match unary {
-                Unary::Complement => "Complement",
-                Unary::Negate => "Negate",
+                UnaryParser::Complement => "Complement",
+                UnaryParser::Negate => "Negate",
             };
-            output += &format!(")\n{}", pretty_printer_expr(ast_node, indent_level));
+            output += &format!(")\n{}", pretty_printer_expr(ast_node, indent_level + 1));
             output
         }
+        Expression::Binary(binop, left, right) => {
+            format!(
+                "{}Binary(\n{}\n{}\n{}\n{})",
+                tabs(indent_level),
+                pretty_printer_binop(binop, indent_level + 1),
+                pretty_printer_expr(left, indent_level + 1),
+                pretty_printer_expr(right, indent_level + 1),
+                tabs(indent_level)
+            )
+        }
+    }
+}
+
+fn pretty_printer_binop(binop: &BinaryParser, indent_level: usize) -> String {
+    match binop {
+        BinaryParser::Add => format!("{}Add,", tabs(indent_level)),
+        BinaryParser::Subtract => format!("{}Subtract,", tabs(indent_level)),
+        BinaryParser::Multiply => format!("{}Multiply,", tabs(indent_level)),
+        BinaryParser::Divide => format!("{}Divide,", tabs(indent_level)),
+        BinaryParser::Remainder => format!("{}Remainder,", tabs(indent_level)),
     }
 }
 

@@ -1,2 +1,5 @@
 /target
 /test_files/*
+test_files/main.s
+test_files/main
+test_files/main.c
