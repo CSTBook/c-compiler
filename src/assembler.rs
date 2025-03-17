@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    parser::{self},
+    parser::{self, UnaryParser},
     tacky::{TackyInstruction, TackyNode, TackyValue},
 };
 
@@ -30,8 +30,13 @@ pub enum Instruction {
     Mov(Operand, Operand),              //src, dst
     Unary(UnaryOp, Operand),            //unop, operand
     Binary(BinaryOp, Operand, Operand), //binop, src, dst (dst is the first operand)
+    Cmp(Operand, Operand),
     Idiv(Operand),
     Cdq,
+    Jmp(String),
+    JmpCC(CondCode, String),
+    SetCC(CondCode, Operand),
+    Label(String),
     AllocateStack(i32),
     Ret,
 }
@@ -53,6 +58,16 @@ pub enum BinaryOp {
     BitwiseXor,
     BitwiseLeftShift,
     BitwiseRightShift,
+}
+
+#[derive(Clone, PartialEq)]
+pub enum CondCode {
+    E,
+    NE,
+    G,
+    GE,
+    L,
+    LE,
 }
 
 pub fn assembler(program_ast: TackyNode) -> AsmNode {
@@ -91,10 +106,17 @@ fn parse_instruction(tacky_instructions: Vec<TackyInstruction>) -> Vec<Instructi
                 ));
                 instructions.push(Instruction::Ret);
             }
-            TackyInstruction::Unary(unop, src, dest) => {
-                instructions.push(Instruction::Mov(parse_operand(&src), parse_operand(&dest)));
-                instructions.push(Instruction::Unary(parse_unop(unop), parse_operand(&dest)));
-            }
+            TackyInstruction::Unary(unop, src, dest) => match unop {
+                UnaryParser::Not => {
+                    instructions.push(Instruction::Cmp(Operand::Imm(0), parse_operand(&src)));
+                    instructions.push(Instruction::Mov(Operand::Imm(0), parse_operand(&dest)));
+                    instructions.push(Instruction::SetCC(CondCode::E, parse_operand(&dest)));
+                }
+                _ => {
+                    instructions.push(Instruction::Mov(parse_operand(&src), parse_operand(&dest)));
+                    instructions.push(Instruction::Unary(parse_unop(unop), parse_operand(&dest)));
+                }
+            },
             TackyInstruction::Binary(binop, src1, src2, dst) => match binop {
                 parser::BinaryParser::Add
                 | parser::BinaryParser::Multiply
@@ -135,15 +157,51 @@ fn parse_instruction(tacky_instructions: Vec<TackyInstruction>) -> Vec<Instructi
                         parse_operand(&dst),
                     ));
                 }
-                parser::BinaryParser::And => todo!(),
-                parser::BinaryParser::Or => todo!(),
-                parser::BinaryParser::Equal => todo!(),
-                parser::BinaryParser::NotEqual => todo!(),
-                parser::BinaryParser::LessThan => todo!(),
-                parser::BinaryParser::LessOrEqual => todo!(),
-                parser::BinaryParser::GreaterThan => todo!(),
-                parser::BinaryParser::GreaterOrEqual => todo!(),
+                parser::BinaryParser::Equal => {
+                    instructions.push(Instruction::Cmp(parse_operand(&src2), parse_operand(&src1)));
+                    instructions.push(Instruction::Mov(Operand::Imm(0), parse_operand(&dst)));
+                    instructions.push(Instruction::SetCC(CondCode::E, parse_operand(&dst)));
+                }
+                parser::BinaryParser::NotEqual => {
+                    instructions.push(Instruction::Cmp(parse_operand(&src2), parse_operand(&src1)));
+                    instructions.push(Instruction::Mov(Operand::Imm(0), parse_operand(&dst)));
+                    instructions.push(Instruction::SetCC(CondCode::NE, parse_operand(&dst)));
+                }
+                parser::BinaryParser::LessThan => {
+                    instructions.push(Instruction::Cmp(parse_operand(&src2), parse_operand(&src1)));
+                    instructions.push(Instruction::Mov(Operand::Imm(0), parse_operand(&dst)));
+                    instructions.push(Instruction::SetCC(CondCode::L, parse_operand(&dst)));
+                }
+                parser::BinaryParser::LessOrEqual => {
+                    instructions.push(Instruction::Cmp(parse_operand(&src2), parse_operand(&src1)));
+                    instructions.push(Instruction::Mov(Operand::Imm(0), parse_operand(&dst)));
+                    instructions.push(Instruction::SetCC(CondCode::LE, parse_operand(&dst)));
+                }
+                parser::BinaryParser::GreaterThan => {
+                    instructions.push(Instruction::Cmp(parse_operand(&src2), parse_operand(&src1)));
+                    instructions.push(Instruction::Mov(Operand::Imm(0), parse_operand(&dst)));
+                    instructions.push(Instruction::SetCC(CondCode::G, parse_operand(&dst)));
+                }
+                parser::BinaryParser::GreaterOrEqual => {
+                    instructions.push(Instruction::Cmp(parse_operand(&src2), parse_operand(&src1)));
+                    instructions.push(Instruction::Mov(Operand::Imm(0), parse_operand(&dst)));
+                    instructions.push(Instruction::SetCC(CondCode::GE, parse_operand(&dst)));
+                }
+                _ => (),
             },
+            TackyInstruction::Copy(src, dst) => {
+                instructions.push(Instruction::Mov(parse_operand(&src), parse_operand(&dst)))
+            }
+            TackyInstruction::Jump(target) => instructions.push(Instruction::Jmp(target)),
+            TackyInstruction::JumpIfZero(condition, target) => {
+                instructions.push(Instruction::Cmp(Operand::Imm(0), parse_operand(&condition)));
+                instructions.push(Instruction::JmpCC(CondCode::E, target));
+            }
+            TackyInstruction::JumpIfNotZero(condition, target) => {
+                instructions.push(Instruction::Cmp(Operand::Imm(0), parse_operand(&condition)));
+                instructions.push(Instruction::JmpCC(CondCode::NE, target));
+            }
+            TackyInstruction::Label(label) => instructions.push(Instruction::Label(label)),
         }
     }
 
@@ -161,7 +219,7 @@ fn parse_unop(unop: parser::UnaryParser) -> UnaryOp {
     match unop {
         parser::UnaryParser::Complement => UnaryOp::Not,
         parser::UnaryParser::Negate => UnaryOp::Neg,
-        parser::UnaryParser::Not => todo!(),
+        parser::UnaryParser::Not => unreachable!("Should have handled Not Unary Op in Assembler"),
     }
 }
 
@@ -207,7 +265,18 @@ fn replace_pseudoregister(program: &mut AsmNode) -> i32 {
                         let new_src = replace_operand(src, &mut temp_vars);
 
                         Instruction::Idiv(new_src)
-                    }
+                    },
+                    Instruction::Cmp(op1, op2) => {
+                        let new_op1 = replace_operand(op1, &mut temp_vars);
+                        let new_op2 = replace_operand(op2, &mut temp_vars);
+
+                        Instruction::Cmp(new_op1, new_op2)
+                    },
+                    Instruction::SetCC(cc, dst) => {
+                        let new_dst = replace_operand(dst, &mut temp_vars);
+
+                        Instruction::SetCC(cc.clone(), new_dst)
+                    },
                     _ => instruction.clone(),
                 };
             }
@@ -351,7 +420,7 @@ fn fix_instructions(offset: i32, program: &mut AsmNode) {
                                         ),
                                     );
                                 }
-                                _ => (),
+                                _ => ()
                             }
                             if let Operand::Imm(_) = dst {
                                 instructions.remove(index);
@@ -381,7 +450,20 @@ fn fix_instructions(offset: i32, program: &mut AsmNode) {
                         instructions
                             .insert(index + 1, Instruction::Idiv(Operand::Reg(Register::R10)));
                         instructions_clone = instructions.clone();
-                    }
+                    },
+                    Instruction::Cmp(op1, op2) => {
+                        if let (Operand::Stack(_),Operand::Stack(_))=(op1, op2) {
+                            instructions.remove(index);
+                            instructions.insert(index,Instruction::Mov(op1.clone(), Operand::Reg(Register::R10)));
+                            instructions.insert(index+1,Instruction::Cmp(Operand::Reg(Register::R10),op2.clone()));
+                        }
+                        if let Operand::Imm(_) = op2 {
+                            instructions.remove(index);
+                            instructions.insert(index,Instruction::Mov(op1.clone(), Operand::Reg(Register::R11)));
+                            instructions.insert(index+1,Instruction::Cmp(Operand::Reg(Register::R11),op2.clone()));
+                        }
+                        instructions_clone = instructions.clone();
+                    },
                     _ => (),
                 }
             }

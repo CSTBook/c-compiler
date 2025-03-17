@@ -41,6 +41,11 @@ fn code_gen_instr(instruction: Instruction) -> String {
         ),
         Instruction::Idiv(operand) => format!("\tidivl\t{}", code_gen_op(operand)),
         Instruction::Cdq => String::from("\tcdq"),
+        Instruction::Cmp(operand, operand1) => todo!(),
+        Instruction::Jmp(_) => todo!(),
+        Instruction::JmpCC(cond_code, _) => todo!(),
+        Instruction::SetCC(cond_code, operand) => todo!(),
+        Instruction::Label(_) => todo!(),
     }
 }
 

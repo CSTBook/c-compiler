@@ -7,18 +7,20 @@ pub enum AstNode {
 pub enum Statement {
     Return(Expression),
 }
+
+#[derive(Clone)]
 pub enum Expression {
     Constant(i32),
     Unary(UnaryParser, Box<Expression>),
     Binary(BinaryParser, Box<Expression>, Box<Expression>),
 }
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum UnaryParser {
     Complement,
     Negate,
     Not,
 }
-
+#[derive(Clone)]
 pub enum BinaryParser {
     Add,
     Subtract,

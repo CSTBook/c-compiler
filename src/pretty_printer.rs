@@ -50,14 +50,14 @@ pub mod parser {
                     UnaryParser::Negate => "Negate",
                     UnaryParser::Not => "Not",
                 };
-                output += &format!(")\n{}", pretty_printer_expr(ast_node, indent_level + 1));
+                output += &format!("){}", pretty_printer_expr(ast_node, indent_level + 1));
                 output
             }
             Expression::Binary(binop, left, right) => {
                 format!(
-                    "{}Binary(\n{}\n{}\n{}\n{})",
+                    "{}Binary({}) (\n{}\n{}\n{})",
                     tabs(indent_level),
-                    pretty_printer_binop(binop, indent_level + 1),
+                    pretty_printer_binop(binop, 0),
                     pretty_printer_expr(left, indent_level + 1),
                     pretty_printer_expr(right, indent_level + 1),
                     tabs(indent_level)
@@ -68,24 +68,24 @@ pub mod parser {
 
     fn pretty_printer_binop(binop: &BinaryParser, indent_level: usize) -> String {
         match binop {
-            BinaryParser::Add => format!("{}Add,", tabs(indent_level)),
-            BinaryParser::Subtract => format!("{}Subtract,", tabs(indent_level)),
-            BinaryParser::Multiply => format!("{}Multiply,", tabs(indent_level)),
-            BinaryParser::Divide => format!("{}Divide,", tabs(indent_level)),
-            BinaryParser::Remainder => format!("{}Remainder,", tabs(indent_level)),
+            BinaryParser::Add => format!("{}Add", tabs(indent_level)),
+            BinaryParser::Subtract => format!("{}Subtract", tabs(indent_level)),
+            BinaryParser::Multiply => format!("{}Multiply", tabs(indent_level)),
+            BinaryParser::Divide => format!("{}Divide", tabs(indent_level)),
+            BinaryParser::Remainder => format!("{}Remainder", tabs(indent_level)),
             BinaryParser::BitwiseAnd => format!("{}BitwiseAnd", tabs(indent_level)),
             BinaryParser::BitwiseOr => format!("{}BitwiseOr", tabs(indent_level)),
             BinaryParser::BitwiseXor => format!("{}BitwiseXor", tabs(indent_level)),
             BinaryParser::BitwiseLeftShift => format!("{}BitwiseRightShift", tabs(indent_level)),
             BinaryParser::BitwiseRightShift => format!("{}BitwiseLeftShift", tabs(indent_level)),
-            BinaryParser::And => format!("{}And,", tabs(indent_level)),
-            BinaryParser::Or => format!("{}Orr,", tabs(indent_level)),
-            BinaryParser::Equal => format!("{}Equal,", tabs(indent_level)),
-            BinaryParser::NotEqual => format!("{}NotEqual,", tabs(indent_level)),
-            BinaryParser::LessThan => format!("{}LessThan,", tabs(indent_level)),
-            BinaryParser::LessOrEqual => format!("{}LessOrEqual,", tabs(indent_level)),
-            BinaryParser::GreaterThan => format!("{}GreaterThan,", tabs(indent_level)),
-            BinaryParser::GreaterOrEqual => format!("{}GreaterOrEqual,", tabs(indent_level)),
+            BinaryParser::And => format!("{}And", tabs(indent_level)),
+            BinaryParser::Or => format!("{}Or", tabs(indent_level)),
+            BinaryParser::Equal => format!("{}Equal", tabs(indent_level)),
+            BinaryParser::NotEqual => format!("{}NotEqual", tabs(indent_level)),
+            BinaryParser::LessThan => format!("{}LessThan", tabs(indent_level)),
+            BinaryParser::LessOrEqual => format!("{}LessOrEqual", tabs(indent_level)),
+            BinaryParser::GreaterThan => format!("{}GreaterThan", tabs(indent_level)),
+            BinaryParser::GreaterOrEqual => format!("{}GreaterOrEqual", tabs(indent_level)),
         }
     }
 }
@@ -136,7 +136,7 @@ pub mod tacky {
                 output += match unary {
                     UnaryParser::Complement => "Complement",
                     UnaryParser::Negate => "Negate",
-                    UnaryParser::Not => todo!(),
+                    UnaryParser::Not => "Not",
                 };
                 output += &format!(
                     ")(\n{}\n{}) in {}",
@@ -159,14 +159,14 @@ pub mod tacky {
                     BinaryParser::BitwiseXor => "BitwiseXor",
                     BinaryParser::BitwiseLeftShift => "BitwiseLeftShift",
                     BinaryParser::BitwiseRightShift => "BitwiseRightShift",
-                    BinaryParser::And => todo!(),
-                    BinaryParser::Or => todo!(),
-                    BinaryParser::Equal => todo!(),
-                    BinaryParser::NotEqual => todo!(),
-                    BinaryParser::LessThan => todo!(),
-                    BinaryParser::LessOrEqual => todo!(),
-                    BinaryParser::GreaterThan => todo!(),
-                    BinaryParser::GreaterOrEqual => todo!(),
+                    BinaryParser::And => "And",
+                    BinaryParser::Or => "Or",
+                    BinaryParser::Equal => "Equal",
+                    BinaryParser::NotEqual => "NotEqual",
+                    BinaryParser::LessThan => "LessThan",
+                    BinaryParser::LessOrEqual => "LessOrEqual",
+                    BinaryParser::GreaterThan => "GreaterThan",
+                    BinaryParser::GreaterOrEqual => "GreaterOrEqual",
                 };
                 output += &format!(
                     ")(\n{}\n{}\n{}) in {}",
@@ -177,6 +177,29 @@ pub mod tacky {
                 );
                 output
             }
+            TackyInstruction::Copy(src, dst) => {
+                format!(
+                    "{}Copy(\n{}\n{}\n{})",
+                    tabs(indent_level),
+                    pretty_printer_val(src, indent_level + 1),
+                    pretty_printer_val(dst, indent_level + 1),
+                    tabs(indent_level)
+                )
+            }
+            TackyInstruction::Jump(target) => format!("{}Jump({})", tabs(indent_level), target),
+            TackyInstruction::JumpIfZero(cond, target) => format!(
+                "{}JumpIfZero({}) to Label({})",
+                tabs(indent_level),
+                pretty_printer_val(cond, 0),
+                target
+            ),
+            TackyInstruction::JumpIfNotZero(cond, target) => format!(
+                "{}JumpIfNotZero({}) to Label({})",
+                tabs(indent_level),
+                pretty_printer_val(cond, 0),
+                target
+            ),
+            TackyInstruction::Label(label) => format!("{}Label({})", tabs(indent_level), label),
         }
     }
 
@@ -255,6 +278,11 @@ pub mod assembler {
                 pretty_printer_opr(operand)
             ),
             Instruction::Cdq => format!("{}Cdq", tabs(indent_level)),
+            Instruction::Cmp(op1, op2) => format!("{}Cmp({},{})",tabs(indent_level),pretty_printer_opr(op1),pretty_printer_opr(op2)),
+            Instruction::Jmp(target) => format!("{}Jmp({})",tabs(indent_level),target),
+            Instruction::JmpCC(cond_code, target) => format!("{}JmpCC({},{})",tabs(indent_level),pretty_printer_cc(cond_code),target),
+            Instruction::SetCC(cond_code, operand) => format!("{}SetCC({},{})",tabs(indent_level),pretty_printer_cc(cond_code),pretty_printer_opr(operand)),
+            Instruction::Label(label) => format!("{}Label({})",tabs(indent_level),label),
         }
     }
 
@@ -295,6 +323,17 @@ pub mod assembler {
             Register::R11 => String::from("R11"),
             Register::CX => String::from("CX"),
             Register::CL => String::from("CL"),
+        }
+    }
+
+    fn pretty_printer_cc(cond_code: &CondCode) -> String {
+        match cond_code {
+            CondCode::E => String::from("E"),
+            CondCode::NE => String::from("NE"),
+            CondCode::G => String::from("G"),
+            CondCode::GE => String::from("GE"),
+            CondCode::L => String::from("L"),
+            CondCode::LE => String::from("LE"),
         }
     }
 }
