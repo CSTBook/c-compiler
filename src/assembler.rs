@@ -19,7 +19,6 @@ pub enum UnaryOp {
 pub enum Register {
     AX,
     CX,
-    CL,
     DX,
     R10,
     R11,
@@ -265,18 +264,18 @@ fn replace_pseudoregister(program: &mut AsmNode) -> i32 {
                         let new_src = replace_operand(src, &mut temp_vars);
 
                         Instruction::Idiv(new_src)
-                    },
+                    }
                     Instruction::Cmp(op1, op2) => {
                         let new_op1 = replace_operand(op1, &mut temp_vars);
                         let new_op2 = replace_operand(op2, &mut temp_vars);
 
                         Instruction::Cmp(new_op1, new_op2)
-                    },
+                    }
                     Instruction::SetCC(cc, dst) => {
                         let new_dst = replace_operand(dst, &mut temp_vars);
 
                         Instruction::SetCC(cc.clone(), new_dst)
-                    },
+                    }
                     _ => instruction.clone(),
                 };
             }
@@ -415,12 +414,12 @@ fn fix_instructions(offset: i32, program: &mut AsmNode) {
                                         index + 1,
                                         Instruction::Binary(
                                             binop.clone(),
-                                            Operand::Reg(Register::CL),
+                                            Operand::Reg(Register::CX),
                                             dst.clone(),
                                         ),
                                     );
                                 }
-                                _ => ()
+                                _ => (),
                             }
                             if let Operand::Imm(_) = dst {
                                 instructions.remove(index);
@@ -450,20 +449,32 @@ fn fix_instructions(offset: i32, program: &mut AsmNode) {
                         instructions
                             .insert(index + 1, Instruction::Idiv(Operand::Reg(Register::R10)));
                         instructions_clone = instructions.clone();
-                    },
+                    }
                     Instruction::Cmp(op1, op2) => {
-                        if let (Operand::Stack(_),Operand::Stack(_))=(op1, op2) {
+                        if let (Operand::Stack(_), Operand::Stack(_)) = (op1, op2) {
                             instructions.remove(index);
-                            instructions.insert(index,Instruction::Mov(op1.clone(), Operand::Reg(Register::R10)));
-                            instructions.insert(index+1,Instruction::Cmp(Operand::Reg(Register::R10),op2.clone()));
+                            instructions.insert(
+                                index,
+                                Instruction::Mov(op1.clone(), Operand::Reg(Register::R10)),
+                            );
+                            instructions.insert(
+                                index + 1,
+                                Instruction::Cmp(Operand::Reg(Register::R10), op2.clone()),
+                            );
                         }
                         if let Operand::Imm(_) = op2 {
                             instructions.remove(index);
-                            instructions.insert(index,Instruction::Mov(op1.clone(), Operand::Reg(Register::R11)));
-                            instructions.insert(index+1,Instruction::Cmp(Operand::Reg(Register::R11),op2.clone()));
+                            instructions.insert(
+                                index,
+                                Instruction::Mov(op2.clone(), Operand::Reg(Register::R11)),
+                            );
+                            instructions.insert(
+                                index + 1,
+                                Instruction::Cmp(op1.clone(), Operand::Reg(Register::R11)),
+                            );
                         }
                         instructions_clone = instructions.clone();
-                    },
+                    }
                     _ => (),
                 }
             }

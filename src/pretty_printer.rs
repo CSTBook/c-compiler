@@ -278,11 +278,26 @@ pub mod assembler {
                 pretty_printer_opr(operand)
             ),
             Instruction::Cdq => format!("{}Cdq", tabs(indent_level)),
-            Instruction::Cmp(op1, op2) => format!("{}Cmp({},{})",tabs(indent_level),pretty_printer_opr(op1),pretty_printer_opr(op2)),
-            Instruction::Jmp(target) => format!("{}Jmp({})",tabs(indent_level),target),
-            Instruction::JmpCC(cond_code, target) => format!("{}JmpCC({},{})",tabs(indent_level),pretty_printer_cc(cond_code),target),
-            Instruction::SetCC(cond_code, operand) => format!("{}SetCC({},{})",tabs(indent_level),pretty_printer_cc(cond_code),pretty_printer_opr(operand)),
-            Instruction::Label(label) => format!("{}Label({})",tabs(indent_level),label),
+            Instruction::Cmp(op1, op2) => format!(
+                "{}Cmp({},{})",
+                tabs(indent_level),
+                pretty_printer_opr(op1),
+                pretty_printer_opr(op2)
+            ),
+            Instruction::Jmp(target) => format!("{}Jmp({})", tabs(indent_level), target),
+            Instruction::JmpCC(cond_code, target) => format!(
+                "{}JmpCC({},{})",
+                tabs(indent_level),
+                pretty_printer_cc(cond_code),
+                target
+            ),
+            Instruction::SetCC(cond_code, operand) => format!(
+                "{}SetCC({},{})",
+                tabs(indent_level),
+                pretty_printer_cc(cond_code),
+                pretty_printer_opr(operand)
+            ),
+            Instruction::Label(label) => format!("{}Label({})", tabs(indent_level), label),
         }
     }
 
@@ -322,7 +337,6 @@ pub mod assembler {
             Register::DX => String::from("DX"),
             Register::R11 => String::from("R11"),
             Register::CX => String::from("CX"),
-            Register::CL => String::from("CL"),
         }
     }
 

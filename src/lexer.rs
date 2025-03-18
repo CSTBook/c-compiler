@@ -58,7 +58,7 @@ pub fn lexer(filename: String) -> Vec<String> {
 
         for regex_token in &token_regexes {
             if let Some(mat) = regex_token.find(&contents) {
-                if contents.find(mat.as_str()).unwrap() != 0 {
+                if mat.start() != 0 {
                     continue;
                 }
                 if mat.as_str().len() > token.len() {
