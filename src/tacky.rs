@@ -1,10 +1,14 @@
 use std::sync::Mutex;
 
-use crate::parser::{self, AstNode, BinaryParser, UnaryParser};
+use crate::parser::{self, BinaryParser, BlockItem, Function, Program, Statement, UnaryParser};
 
-pub enum TackyNode {
-    Program(Box<TackyNode>),
-    Function(String, Vec<TackyInstruction>),
+pub struct TackyProgram {
+    pub function: TackyFunction,
+}
+
+pub struct TackyFunction {
+    pub name: String,
+    pub body: Vec<TackyInstruction>,
 }
 
 pub enum TackyInstruction {
@@ -25,31 +29,37 @@ pub enum TackyValue {
 
 static TEMP_COUNTER: Mutex<i32> = Mutex::new(0);
 
-pub fn emit_tacky(program_ast: AstNode) -> TackyNode {
+pub fn emit_tacky(program_ast: Program) -> TackyProgram {
     parse_program(program_ast)
 }
 
-fn parse_program(program_ast: AstNode) -> TackyNode {
-    match program_ast {
-        AstNode::Program(func) => TackyNode::Program(Box::new(parse_function(*func))),
-        _ => panic!("Tacky Program Parser Error"),
+fn parse_program(program_ast: Program) -> TackyProgram {
+    TackyProgram {
+        function: parse_function(program_ast.function),
     }
 }
 
-fn parse_function(function_ast: AstNode) -> TackyNode {
-    match function_ast {
-        AstNode::Function(name, body) => TackyNode::Function(name, parse_instructions(body)),
-        _ => panic!("Tacky Function Parser Error"),
+fn parse_function(function_ast: Function) -> TackyFunction {
+    let name = function_ast.name;
+    TackyFunction {
+        name,
+        body: parse_instructions(function_ast.body.first().unwrap()),
     }
 }
 
-fn parse_instructions(instructions_ast: parser::Statement) -> Vec<TackyInstruction> {
+fn parse_instructions(instructions_ast: &parser::BlockItem) -> Vec<TackyInstruction> {
     let mut instructions: Vec<TackyInstruction> = Vec::new();
+    let instructions_ast = instructions_ast.clone();
     match instructions_ast {
-        parser::Statement::Return(exp) => {
-            let temp = parse_exp(exp, &mut instructions);
-            instructions.push(TackyInstruction::Return(temp));
-        }
+        BlockItem::Declaration(_) => (),
+        BlockItem::Statement(statement) => match statement {
+            Statement::Return(exp) => {
+                let temp = parse_exp(exp, &mut instructions);
+                instructions.push(TackyInstruction::Return(temp));
+            }
+            Statement::Expression(expression) => todo!(),
+            Statement::Null => todo!(),
+        },
     }
     instructions
 }
@@ -134,6 +144,8 @@ fn parse_exp(
                 dst
             }
         },
+        parser::Expression::Var(_) => todo!(),
+        parser::Expression::Assignment(expression, expression1) => todo!(),
     }
 }
 

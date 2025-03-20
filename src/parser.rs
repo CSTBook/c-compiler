@@ -1,18 +1,45 @@
 use regex::Regex;
 
-pub enum AstNode {
-    Program(Box<AstNode>),
-    Function(String, Statement),
+// pub enum AstNode {
+//     Program(Box<AstNode>),
+//     Function(String, Statement),
+// }
+
+pub struct Program {
+    pub function: Function,
 }
+
+pub struct Function {
+    pub name: String,
+    pub body: Vec<BlockItem>,
+}
+
+#[derive(Clone)]
+pub enum BlockItem {
+    Statement(Statement),
+    Declaration(Declaration),
+}
+
+#[derive(Clone)]
+pub struct Declaration {
+    name: String,
+    init: Expression,
+}
+
+#[derive(Clone)]
 pub enum Statement {
     Return(Expression),
+    Expression(Expression),
+    Null,
 }
 
 #[derive(Clone)]
 pub enum Expression {
     Constant(i32),
+    Var(String),
     Unary(UnaryParser, Box<Expression>),
     Binary(BinaryParser, Box<Expression>, Box<Expression>),
+    Assignment(Box<Expression>, Box<Expression>),
 }
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum UnaryParser {
@@ -42,7 +69,7 @@ pub enum BinaryParser {
     GreaterOrEqual,
 }
 
-pub fn parser(mut tokens: Vec<String>) -> AstNode {
+pub fn parser(mut tokens: Vec<String>) -> Program {
     let program = parse_program(&mut tokens);
 
     //check for extraneous tokens
@@ -53,11 +80,13 @@ pub fn parser(mut tokens: Vec<String>) -> AstNode {
     program
 }
 
-fn parse_program(tokens: &mut Vec<String>) -> AstNode {
-    AstNode::Program(Box::new(parse_function(tokens)))
+fn parse_program(tokens: &mut Vec<String>) -> Program {
+    Program {
+        function: parse_function(tokens),
+    }
 }
 
-fn parse_function(tokens: &mut Vec<String>) -> AstNode {
+fn parse_function(tokens: &mut Vec<String>) -> Function {
     expect("int", tokens);
     let identifier = tokens.remove(0);
 
@@ -70,7 +99,11 @@ fn parse_function(tokens: &mut Vec<String>) -> AstNode {
     expect("{", tokens);
     let statement = parse_statement(tokens);
     expect("}", tokens);
-    AstNode::Function(identifier, statement)
+
+    Function {
+        name: identifier,
+        body: vec![BlockItem::Statement(statement)],
+    }
 }
 
 fn check_name(name: &String) {

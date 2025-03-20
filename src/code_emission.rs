@@ -1,28 +1,29 @@
 use std::fs::File;
 use std::io::Write;
 
-use crate::assembler::{AsmNode, BinaryOp, CondCode, Instruction, Operand, UnaryOp};
+use crate::assembler::{
+    AsmFunction, AsmProgram, BinaryOp, CondCode, Instruction, Operand, UnaryOp,
+};
 
-pub fn code_emission(program: AsmNode, filename: String) -> String {
+pub fn code_emission(program: AsmProgram, filename: String) -> String {
     let mut out_file = File::create(filename.clone() + ".s").unwrap();
     write!(out_file, "{}", code_gen(program)).unwrap();
     filename + ".s"
 }
 
-fn code_gen(program: AsmNode) -> String {
-    match program {
-        AsmNode::Program(func) => code_gen(*func),
-        AsmNode::Function(name, instructions) => {
-            let mut output = format!(
-                "\t.globl _{}\n_{}:\n\tpushq\t%rbp\n\tmovq\t%rsp, %rbp",
-                name, name
-            );
-            for instruction in instructions {
-                output += &format!("\n{}", code_gen_instr(instruction));
-            }
-            output
-        }
+fn code_gen(program: AsmProgram) -> String {
+    code_gen_fn(program.function)
+}
+
+fn code_gen_fn(function: AsmFunction) -> String {
+    let mut output = format!(
+        "\t.globl _{}\n_{}:\n\tpushq\t%rbp\n\tmovq\t%rsp, %rbp",
+        function.name, function.name
+    );
+    for instruction in function.instructions {
+        output += &format!("\n{}", code_gen_instr(instruction));
     }
+    output
 }
 
 fn code_gen_instr(instruction: Instruction) -> String {

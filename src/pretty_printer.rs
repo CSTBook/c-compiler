@@ -3,28 +3,34 @@ pub use crate::parser::*;
 pub use crate::tacky::*;
 pub mod parser {
     use super::*;
-    pub fn pretty_printer(node: &AstNode, indent_level: usize) -> String {
-        match node {
-            AstNode::Program(func) => {
-                format!(
-                    "{}Program(\n{}{}\n{})",
-                    tabs(indent_level),
-                    tabs(indent_level),
-                    pretty_printer(func, indent_level + 1),
-                    tabs(indent_level)
-                )
+    pub fn pretty_printer(program: &Program, indent_level: usize) -> String {
+        format!(
+            "{}Program(\n{}{}\n{})",
+            tabs(indent_level),
+            tabs(indent_level),
+            pretty_printer_fn(&program.function, indent_level + 1),
+            tabs(indent_level)
+        )
+    }
+
+    pub fn pretty_printer_fn(func: &Function, indent_level: usize) -> String {
+        format!(
+            "{}Function(\n{}name=\"{}\"\n{}body={}\n{})",
+            tabs(indent_level),
+            tabs(indent_level + 1),
+            func.name,
+            tabs(indent_level + 1),
+            pretty_printer_block(func.body.first().unwrap(), indent_level + 1),
+            tabs(indent_level)
+        )
+    }
+
+    pub fn pretty_printer_block(block: &BlockItem, indent_level: usize) -> String {
+        match block {
+            BlockItem::Statement(statement) => {
+                pretty_printer_statement(statement, indent_level + 1)
             }
-            AstNode::Function(name, statement) => {
-                format!(
-                    "{}Function(\n{}name=\"{}\"\n{}body={}\n{})",
-                    tabs(indent_level),
-                    tabs(indent_level + 1),
-                    name,
-                    tabs(indent_level + 1),
-                    pretty_printer_statement(statement, indent_level + 1),
-                    tabs(indent_level)
-                )
-            }
+            BlockItem::Declaration(declaration) => todo!(),
         }
     }
 
@@ -35,6 +41,7 @@ pub mod parser {
                 pretty_printer_expr(expression, indent_level + 1),
                 tabs(indent_level)
             ),
+            _ => todo!(),
         }
     }
 
@@ -63,6 +70,8 @@ pub mod parser {
                     tabs(indent_level)
                 )
             }
+            Expression::Var(_) => todo!(),
+            Expression::Assignment(expression, expression1) => todo!(),
         }
     }
 
@@ -91,34 +100,33 @@ pub mod parser {
 }
 pub mod tacky {
     use super::*;
-    pub fn pretty_printer(node: &TackyNode, indent_level: usize) -> String {
-        match node {
-            TackyNode::Program(func) => {
-                format!(
-                    "{}Program(\n{}{}\n{})",
-                    tabs(indent_level),
-                    tabs(indent_level),
-                    pretty_printer(func, indent_level + 1),
-                    tabs(indent_level)
-                )
-            }
-            TackyNode::Function(name, instructions) => {
-                let mut output = format!(
-                    "{}Function(\n{}name=\"{}\"\n{}body=(",
-                    tabs(indent_level),
-                    tabs(indent_level + 1),
-                    name,
-                    tabs(indent_level + 1)
-                );
+    pub fn pretty_printer(node: &TackyProgram, indent_level: usize) -> String {
+        format!(
+            "{}Program(\n{}{}\n{})",
+            tabs(indent_level),
+            tabs(indent_level),
+            pretty_printer_fn(&node.function, indent_level + 1),
+            tabs(indent_level)
+        )
+    }
 
-                for instruction in instructions {
-                    output += &format!("\n{}", pretty_printer_instr(instruction, indent_level + 2));
-                }
-                output += &format!("\n{})\n{})", tabs(indent_level + 1), tabs(indent_level));
+    fn pretty_printer_fn(func: &TackyFunction, indent_level: usize) -> String {
+        let name = func.name.clone();
 
-                output
-            }
+        let mut output = format!(
+            "{}Function(\n{}name=\"{}\"\n{}body=(",
+            tabs(indent_level),
+            tabs(indent_level + 1),
+            name,
+            tabs(indent_level + 1)
+        );
+
+        for instruction in &func.body {
+            output += &format!("\n{}", pretty_printer_instr(instruction, indent_level + 2));
         }
+        output += &format!("\n{})\n{})", tabs(indent_level + 1), tabs(indent_level));
+
+        output
     }
 
     fn pretty_printer_instr(instruction: &TackyInstruction, indent_level: usize) -> String {
@@ -216,32 +224,29 @@ pub mod tacky {
 }
 pub mod assembler {
     use super::*;
-    pub fn pretty_printer(node: &AsmNode, indent_level: usize) -> String {
-        match node {
-            AsmNode::Program(func) => {
-                format!(
-                    "{}Program(\n{}{}\n{})",
-                    tabs(indent_level),
-                    tabs(indent_level),
-                    pretty_printer(func, indent_level + 1),
-                    tabs(indent_level)
-                )
-            }
-            AsmNode::Function(name, instructions) => {
-                let mut output = format!(
-                    "{}Function(\n{}name=\"{}\"\n{}body=(",
-                    tabs(indent_level),
-                    tabs(indent_level + 1),
-                    name,
-                    tabs(indent_level + 1)
-                );
-                for instruction in instructions {
-                    output += &format!("\n{}", pretty_printer_instr(instruction, indent_level + 2));
-                }
-                output += &format!("\n{})\n{})", tabs(indent_level + 1), tabs(indent_level));
-                output
-            }
+    pub fn pretty_printer(program: &AsmProgram, indent_level: usize) -> String {
+        format!(
+            "{}Program(\n{}{}\n{})",
+            tabs(indent_level),
+            tabs(indent_level),
+            pretty_printer_fn(&program.function, indent_level + 1),
+            tabs(indent_level)
+        )
+    }
+
+    fn pretty_printer_fn(function: &AsmFunction, indent_level: usize) -> String {
+        let mut output = format!(
+            "{}Function(\n{}name=\"{}\"\n{}body=(",
+            tabs(indent_level),
+            tabs(indent_level + 1),
+            function.name,
+            tabs(indent_level + 1)
+        );
+        for instruction in function.instructions.clone() {
+            output += &format!("\n{}", pretty_printer_instr(&instruction, indent_level + 2));
         }
+        output += &format!("\n{})\n{})", tabs(indent_level + 1), tabs(indent_level));
+        output
     }
 
     #[allow(dead_code)]
