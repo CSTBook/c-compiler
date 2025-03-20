@@ -1,10 +1,5 @@
 use regex::Regex;
 
-// pub enum AstNode {
-//     Program(Box<AstNode>),
-//     Function(String, Statement),
-// }
-
 pub struct Program {
     pub function: Function,
 }
@@ -22,8 +17,8 @@ pub enum BlockItem {
 
 #[derive(Clone)]
 pub struct Declaration {
-    name: String,
-    init: Expression,
+    pub name: String,
+    pub init: Option<Expression>, //option in case of no init
 }
 
 #[derive(Clone)]
@@ -97,46 +92,72 @@ fn parse_function(tokens: &mut Vec<String>) -> Function {
     expect("void", tokens);
     expect(")", tokens);
     expect("{", tokens);
-    let statement = parse_statement(tokens);
+
+    let mut function_body: Vec<BlockItem> = Vec::new();
+    while tokens.first().unwrap() != "}" {
+        function_body.push(parse_block(tokens));
+        println!("{:?}",tokens);
+    }
+
     expect("}", tokens);
 
     Function {
         name: identifier,
-        body: vec![BlockItem::Statement(statement)],
+        body: function_body,
     }
 }
 
 fn check_name(name: &String) {
     let first = name.chars().next().unwrap().to_string();
     let re = Regex::new(r"[A-Z]|[a-z]|_").unwrap();
-    if !re.is_match(&first) {
-        panic!("Invalid function name \"{}\"", name);
+    let keywords = ["int", "return", "void"];
+    if !re.is_match(&first) || keywords.contains(&name.as_str()) {
+        panic!("Invalid name \"{}\"", name);
     }
 }
 
-fn parse_statement(tokens: &mut Vec<String>) -> Statement {
-    expect("return", tokens);
-    let exp = parse_expression(tokens, 0);
-    expect(";", tokens);
-    Statement::Return(exp)
+fn parse_block(tokens: &mut Vec<String>) -> BlockItem {
+    match tokens.first().unwrap().as_str() {
+        "int" => BlockItem::Declaration(parse_declaration(tokens)),
+        _ => BlockItem::Statement(parse_statement(tokens)),
+    }
 }
 
-fn parse_factor(tokens: &mut Vec<String>) -> Expression {
-    let next_token = tokens.first().unwrap();
-    if next_token.parse::<i32>().is_ok() {
-        Expression::Constant(tokens.remove(0).parse::<i32>().unwrap())
-    } else if next_token == "-" || next_token == "~" || next_token == "!" {
-        let operator = parse_unop(tokens.remove(0));
-        let inner_exp = parse_factor(tokens);
-        Expression::Unary(operator, Box::new(inner_exp))
-    } else if next_token == "(" {
+fn parse_declaration(tokens: &mut Vec<String>) -> Declaration {
+    expect("int", tokens); //hard coded int for now
+    let name = tokens.remove(0);
+    check_name(&name);
+    if tokens.first().unwrap().as_str() == "=" {
         tokens.remove(0);
-        let inner_exp = parse_expression(tokens, 0);
-        expect(")", tokens);
-        inner_exp
-    } else {
-        //TODO: Add better compiler error
-        panic!("Invalid code: {:?}", tokens);
+        let exp = parse_expression(tokens, 0);
+        expect(";", tokens);
+        return Declaration {
+            name,
+            init: Some(exp),
+        };
+    }
+    expect(";", tokens);
+    Declaration { name, init: None }
+}
+
+fn parse_statement(tokens: &mut Vec<String>) -> Statement {
+    let next_token = tokens.first().unwrap();
+    match next_token.as_str() {
+        "return" => {
+            tokens.remove(0);
+            let exp = parse_expression(tokens, 0);
+            expect(";", tokens);
+            Statement::Return(exp)
+        }
+        ";" => {
+            tokens.remove(0);
+            Statement::Null
+        }
+        _ => {
+            let exp = parse_expression(tokens, 0);
+            expect(";", tokens);
+            Statement::Expression(exp)
+        }
     }
 }
 
@@ -160,21 +181,50 @@ fn parse_expression(tokens: &mut Vec<String>, min_precedence: i32) -> Expression
         || next_token == ">"
         || next_token == "<"
         || next_token == ">="
-        || next_token == "<=")
+        || next_token == "<="
+        || next_token == "=")
         && get_precedence(next_token.to_string()) >= min_precedence
     //and the binary operator has higher precedence than the outer one
     {
-        let operator = parse_binop(tokens);
-        let right = parse_expression(tokens, get_precedence(next_token.to_string()) + 1); //so that we get left associativity
-        left = Expression::Binary(operator, Box::new(left), Box::new(right));
+        if next_token.as_str() == "=" {
+            //for right associativity of =
+            tokens.remove(0);
+            let right = parse_expression(tokens, get_precedence(next_token.to_string())); //so that we get left associativity
+            left = Expression::Assignment(Box::new(left), Box::new(right));
+        } else {
+            let operator = parse_binop(tokens);
+            let right = parse_expression(tokens, get_precedence(next_token.to_string()) + 1); //so that we get left associativity
+            left = Expression::Binary(operator, Box::new(left), Box::new(right));
+        }
         next_token = tokens.first().unwrap().clone();
     }
 
     left
 }
 
+fn parse_factor(tokens: &mut Vec<String>) -> Expression {
+    let next_token = tokens.first().unwrap();
+    if next_token.parse::<i32>().is_ok() {
+        Expression::Constant(tokens.remove(0).parse::<i32>().unwrap())
+    } else if next_token == "-" || next_token == "~" || next_token == "!" {
+        let operator = parse_unop(tokens.remove(0));
+        let inner_exp = parse_factor(tokens);
+        Expression::Unary(operator, Box::new(inner_exp))
+    } else if next_token == "(" {
+        tokens.remove(0);
+        let inner_exp = parse_expression(tokens, 0);
+        expect(")", tokens);
+        inner_exp
+    } else {
+        //for the time being, until i implement semantic analysis
+        check_name(next_token);
+        Expression::Var(tokens.remove(0))
+    }
+}
+
 fn get_precedence(token: String) -> i32 {
     match token.as_str() {
+        "=" => 1,
         "||" => 3,
         "&&" => 4,
         "|" => 5,

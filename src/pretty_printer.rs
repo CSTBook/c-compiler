@@ -14,34 +14,68 @@ pub mod parser {
     }
 
     pub fn pretty_printer_fn(func: &Function, indent_level: usize) -> String {
-        format!(
-            "{}Function(\n{}name=\"{}\"\n{}body={}\n{})",
+        let mut output = format!(
+            "{}Function(\n{}name=\"{}\"\n{}body=",
             tabs(indent_level),
             tabs(indent_level + 1),
             func.name,
-            tabs(indent_level + 1),
-            pretty_printer_block(func.body.first().unwrap(), indent_level + 1),
-            tabs(indent_level)
-        )
+            tabs(indent_level + 1)
+        );
+        for instruction in func.body.clone() {
+            output += format!(
+                "\n{}",
+                pretty_printer_block(&instruction, indent_level + 1)
+            )
+            .as_str();
+        }
+
+        output += format!("\n{})",tabs(indent_level)).as_str();
+        output
     }
 
     pub fn pretty_printer_block(block: &BlockItem, indent_level: usize) -> String {
         match block {
             BlockItem::Statement(statement) => {
-                pretty_printer_statement(statement, indent_level + 1)
+                format!(
+                    "{}{}\n{})",
+                    tabs(indent_level),
+                    pretty_printer_statement(statement, indent_level + 1),
+                    tabs(indent_level)
+                )
             }
-            BlockItem::Declaration(declaration) => todo!(),
+            BlockItem::Declaration(declaration) => {
+                format!(
+                    "{}{}\n{})",
+                    tabs(indent_level),
+                    pretty_printer_dec(declaration, indent_level + 1),
+                    tabs(indent_level)
+                )
+            }
         }
+    }
+
+    fn pretty_printer_dec(declaration: &Declaration, indent_level: usize) -> String {
+        if let Some(exp) = &declaration.init {
+            return format!(
+                "Declaration({}=\n{}",
+                declaration.name,
+                pretty_printer_expr(exp, indent_level + 1)
+            );
+        }
+        format!("Declaration({})", declaration.name) //uninitialized variable
     }
 
     fn pretty_printer_statement(statement: &Statement, indent_level: usize) -> String {
         match statement {
             Statement::Return(expression) => format!(
-                "Return(\n{}\n{})",
-                pretty_printer_expr(expression, indent_level + 1),
-                tabs(indent_level)
+                        "Return(\n{}",
+                        pretty_printer_expr(expression, indent_level + 1)
+                    ),
+            Statement::Expression(expression) => format!(
+                "Expression(\n{}",
+                pretty_printer_expr(expression, indent_level + 1)
             ),
-            _ => todo!(),
+            Statement::Null => String::from("Null"),
         }
     }
 
@@ -70,8 +104,16 @@ pub mod parser {
                     tabs(indent_level)
                 )
             }
-            Expression::Var(_) => todo!(),
-            Expression::Assignment(expression, expression1) => todo!(),
+            Expression::Var(name) => format!("{}Var({})", tabs(indent_level), name),
+            Expression::Assignment(lvalue, rvalue) => {
+                format!(
+                    "{}Assignment(\n{}\n{}\n{})",
+                    tabs(indent_level),
+                    pretty_printer_expr(lvalue, indent_level + 1),
+                    pretty_printer_expr(rvalue, indent_level + 1),
+                    tabs(indent_level)
+                )
+            }
         }
     }
 
