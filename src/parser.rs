@@ -1,5 +1,7 @@
 use regex::Regex;
 
+//TODO: IMPLEMENT INCREMENT OPERATORS (POSTFIX AND PREFIX)
+
 pub struct Program {
     pub function: Function,
 }
@@ -314,17 +316,24 @@ fn parse_factor(tokens: &mut Vec<String>) -> Expression {
     let next_token = tokens.first().unwrap();
     if next_token.parse::<i32>().is_ok() {
         Expression::Constant(tokens.remove(0).parse::<i32>().unwrap())
-    } else if next_token == "-" || next_token == "~" || next_token == "!" {
+    } else if next_token == "-" || next_token == "~" || next_token == "!"{
         let operator = parse_unop(tokens.remove(0));
         let inner_exp = parse_factor(tokens);
         Expression::Unary(operator, Box::new(inner_exp))
+    } else if next_token == "--" {
+        tokens.remove(0);
+        let exp = parse_factor(tokens);
+        Expression::Binary(BinaryParser::Subtract, Box::new(exp), Box::new(Expression::Constant(1)))
+    } else if next_token == "++" {
+        tokens.remove(0);
+        let exp = parse_factor(tokens);
+        Expression::Binary(BinaryParser::Add, Box::new(exp), Box::new(Expression::Constant(1)))
     } else if next_token == "(" {
         tokens.remove(0);
         let inner_exp = parse_expression(tokens, 0);
         expect(")", tokens);
         inner_exp
     } else {
-        //for the time being, until i implement semantic analysis
         check_name(next_token);
         Expression::Var(tokens.remove(0))
     }
