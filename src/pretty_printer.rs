@@ -56,7 +56,7 @@ pub mod parser {
                 "Declaration({}=\n{}\n{})",
                 declaration.name,
                 pretty_printer_expr(exp, indent_level + 1),
-                tabs(indent_level-1)
+                tabs(indent_level - 1)
             );
         }
         format!("Declaration({})", declaration.name) //uninitialized variable

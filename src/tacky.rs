@@ -46,7 +46,7 @@ fn parse_function(function_ast: Function) -> TackyFunction {
         body: {
             let mut temp: Vec<TackyInstruction> = Vec::new();
             for instruction in function_ast.body {
-               temp.extend(parse_instructions(&instruction));
+                temp.extend(parse_instructions(&instruction));
             }
             temp.push(TackyInstruction::Return(TackyValue::Constant(0))); //in case main function doesn't have a return statement
             temp
@@ -65,7 +65,7 @@ fn parse_instructions(instructions_ast: &parser::BlockItem) -> Vec<TackyInstruct
                 instructions.push(TackyInstruction::Copy(result, TackyValue::Var(name)));
             }
             // if the variable isnt initialized, we don't wanna do anything
-        },
+        }
         BlockItem::Statement(statement) => match statement {
             Statement::Return(exp) => {
                 let temp = parse_exp(exp, &mut instructions);
@@ -73,8 +73,11 @@ fn parse_instructions(instructions_ast: &parser::BlockItem) -> Vec<TackyInstruct
             }
             Statement::Expression(expression) => {
                 let temp = parse_exp(expression, &mut instructions);
-                instructions.push(TackyInstruction::Copy(temp, TackyValue::Var(make_temporary_variable())));
-            },
+                instructions.push(TackyInstruction::Copy(
+                    temp,
+                    TackyValue::Var(make_temporary_variable()),
+                ));
+            }
             Statement::Null => (),
         },
     }
@@ -165,11 +168,14 @@ fn parse_exp(
         parser::Expression::Assignment(var, exp) => {
             if let parser::Expression::Var(name) = *var {
                 let result = parse_exp(*exp, instructions);
-                instructions.push(TackyInstruction::Copy(result, TackyValue::Var(name.clone())));
+                instructions.push(TackyInstruction::Copy(
+                    result,
+                    TackyValue::Var(name.clone()),
+                ));
                 return TackyValue::Var(name);
             }
             unreachable!();
-        },
+        }
     }
 }
 
