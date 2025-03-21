@@ -50,6 +50,11 @@ pub fn lexer(filename: String) -> Vec<String> {
         r"\*=",
         r"\/=",
         r"%=",
+        r"&=",
+        r"\|=",
+        r"\^=",
+        r"<<=",
+        r">>=",
     ];
 
     //TODO: Add increment and bitwise compound operators
