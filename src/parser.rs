@@ -96,7 +96,7 @@ fn parse_function(tokens: &mut Vec<String>) -> Function {
     let mut function_body: Vec<BlockItem> = Vec::new();
     while tokens.first().unwrap() != "}" {
         function_body.push(parse_block(tokens));
-        println!("{:?}",tokens);
+        // println!("{:?}",tokens);
     }
 
     expect("}", tokens);

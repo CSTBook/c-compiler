@@ -22,14 +22,11 @@ pub mod parser {
             tabs(indent_level + 1)
         );
         for instruction in func.body.clone() {
-            output += format!(
-                "\n{}",
-                pretty_printer_block(&instruction, indent_level + 1)
-            )
-            .as_str();
+            output +=
+                format!("\n{}", pretty_printer_block(&instruction, indent_level + 1)).as_str();
         }
 
-        output += format!("\n{})",tabs(indent_level)).as_str();
+        output += format!("\n{})", tabs(indent_level)).as_str();
         output
     }
 
@@ -68,9 +65,9 @@ pub mod parser {
     fn pretty_printer_statement(statement: &Statement, indent_level: usize) -> String {
         match statement {
             Statement::Return(expression) => format!(
-                        "Return(\n{}",
-                        pretty_printer_expr(expression, indent_level + 1)
-                    ),
+                "Return(\n{}",
+                pretty_printer_expr(expression, indent_level + 1)
+            ),
             Statement::Expression(expression) => format!(
                 "Expression(\n{}",
                 pretty_printer_expr(expression, indent_level + 1)

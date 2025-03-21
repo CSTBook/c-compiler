@@ -7,6 +7,7 @@ mod code_emission;
 mod lexer;
 mod parser;
 mod pretty_printer;
+mod semantic_analysis;
 mod tacky;
 
 #[derive(Debug)]
@@ -17,6 +18,7 @@ enum ArgOption {
     Codegen,
     Source,
     Tacky,
+    Validate,
 }
 
 fn main() {
@@ -70,6 +72,7 @@ fn arg_parser(args: Vec<String>, print: bool) -> (String, ArgOption) {
             "--codegen" => ArgOption::Codegen,
             "-S" => ArgOption::Source,
             "--tacky" => ArgOption::Tacky,
+            "--validate" => ArgOption::Validate,
             _ => {
                 filename = args[1].split(".").next().unwrap().to_string();
                 ArgOption::None
@@ -100,6 +103,18 @@ fn compile(filename: &str, option: ArgOption, print: bool) -> String {
         ArgOption::Parser => {
             let tokens = lexer::lexer(filename.clone());
             let parsed_program = parser::parser(tokens);
+            if print {
+                println!(
+                    "{}",
+                    pretty_printer::parser::pretty_printer(&parsed_program, 0)
+                );
+            }
+            String::new()
+        }
+        ArgOption::Validate => {
+            let tokens = lexer::lexer(filename.clone());
+            let mut parsed_program = parser::parser(tokens);
+            semantic_analysis::semantic_analysis(&mut parsed_program);
             if print {
                 println!(
                     "{}",

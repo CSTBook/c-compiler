@@ -295,8 +295,7 @@ fn replace_operand(operand: &Operand, temp_vars: &mut HashMap<String, i32>) -> O
     }
 }
 
-//replaces mov, add, sub, mul addresses where both operands are addresses with address and register
-//also replaces operand of idiv with register if immediate
+//fix improper operands
 fn fix_instructions(offset: i32, program: &mut AsmProgram) {
     program
         .function
