@@ -10,17 +10,20 @@ pub fn semantic_analysis(ast_program: &mut Program) {
 
 fn variable_resolution(ast_program: &mut Program) {
     let mut variable_map: HashMap<String, String> = HashMap::new();
+    let mut body_clone = Vec::new();
 
     for block in ast_program.function.body.clone() {
-        match block {
+        body_clone.push(match block {
             BlockItem::Statement(statement) => {
-                resolve_statement(statement, &mut variable_map);
+                BlockItem::Statement(resolve_statement(statement, &mut variable_map))
             }
             BlockItem::Declaration(declaration) => {
-                resolve_declaration(declaration, &mut variable_map);
+                BlockItem::Declaration(resolve_declaration(declaration, &mut variable_map))
             }
-        }
+        });
     }
+
+    ast_program.function.body = body_clone;
 }
 
 fn resolve_declaration(
@@ -31,7 +34,7 @@ fn resolve_declaration(
     if variable_map.contains_key(&name) {
         panic!("ERROR: Redeclared {name}");
     }
-    let temp_name = make_temporary_variable();
+    let temp_name = make_temporary_variable(&name);
     variable_map.insert(name, temp_name.clone());
     if let Some(exp) = init {
         init = Some(resolve_expression(exp, variable_map));
@@ -42,8 +45,8 @@ fn resolve_declaration(
     }
 }
 
-fn make_temporary_variable() -> String {
-    let name = format!("tmp.var.{}", TEMP_COUNTER.lock().unwrap());
+fn make_temporary_variable(name: &str) -> String {
+    let name = format!("{}.{}", name, TEMP_COUNTER.lock().unwrap());
     *(TEMP_COUNTER.lock().unwrap()) += 1;
     name
 }

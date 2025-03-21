@@ -43,7 +43,14 @@ fn parse_function(function_ast: Function) -> TackyFunction {
     let name = function_ast.name;
     TackyFunction {
         name,
-        body: parse_instructions(function_ast.body.first().unwrap()),
+        body: {
+            let mut temp: Vec<TackyInstruction> = Vec::new();
+            for instruction in function_ast.body {
+               temp.extend(parse_instructions(&instruction));
+            }
+            temp.push(TackyInstruction::Return(TackyValue::Constant(0))); //in case main function doesn't have a return statement
+            temp
+        },
     }
 }
 
@@ -51,14 +58,24 @@ fn parse_instructions(instructions_ast: &parser::BlockItem) -> Vec<TackyInstruct
     let mut instructions: Vec<TackyInstruction> = Vec::new();
     let instructions_ast = instructions_ast.clone();
     match instructions_ast {
-        BlockItem::Declaration(_) => (),
+        BlockItem::Declaration(declaration) => {
+            let (name, init) = (declaration.name, declaration.init);
+            if let Some(exp) = init {
+                let result = parse_exp(exp, &mut instructions);
+                instructions.push(TackyInstruction::Copy(result, TackyValue::Var(name)));
+            }
+            // if the variable isnt initialized, we don't wanna do anything
+        },
         BlockItem::Statement(statement) => match statement {
             Statement::Return(exp) => {
                 let temp = parse_exp(exp, &mut instructions);
                 instructions.push(TackyInstruction::Return(temp));
             }
-            Statement::Expression(expression) => todo!(),
-            Statement::Null => todo!(),
+            Statement::Expression(expression) => {
+                let temp = parse_exp(expression, &mut instructions);
+                instructions.push(TackyInstruction::Copy(temp, TackyValue::Var(make_temporary_variable())));
+            },
+            Statement::Null => (),
         },
     }
     instructions
@@ -144,8 +161,15 @@ fn parse_exp(
                 dst
             }
         },
-        parser::Expression::Var(_) => todo!(),
-        parser::Expression::Assignment(expression, expression1) => todo!(),
+        parser::Expression::Var(name) => TackyValue::Var(name),
+        parser::Expression::Assignment(var, exp) => {
+            if let parser::Expression::Var(name) = *var {
+                let result = parse_exp(*exp, instructions);
+                instructions.push(TackyInstruction::Copy(result, TackyValue::Var(name.clone())));
+                return TackyValue::Var(name);
+            }
+            unreachable!();
+        },
     }
 }
 

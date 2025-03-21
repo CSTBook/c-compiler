@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["--validate", "test_files/main.c", "--print"],
+            "args": ["--tacky", "test_files/main.c", "--print"],
             "cwd": "${workspaceFolder}"
         },
         {

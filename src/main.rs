@@ -125,7 +125,8 @@ fn compile(filename: &str, option: ArgOption, print: bool) -> String {
         }
         ArgOption::Tacky => {
             let tokens = lexer::lexer(filename.clone());
-            let parsed_program = parser::parser(tokens);
+            let mut parsed_program = parser::parser(tokens);
+            semantic_analysis::semantic_analysis(&mut parsed_program);
             let tacky_program = tacky::emit_tacky(parsed_program);
             if print {
                 println!(
@@ -137,7 +138,8 @@ fn compile(filename: &str, option: ArgOption, print: bool) -> String {
         }
         ArgOption::Codegen => {
             let tokens = lexer::lexer(filename.clone());
-            let parsed_program = parser::parser(tokens);
+            let mut parsed_program = parser::parser(tokens);
+            semantic_analysis::semantic_analysis(&mut parsed_program);
             let tacky_program = tacky::emit_tacky(parsed_program);
             let asm_program = assembler::assembler(tacky_program);
             if print {
@@ -150,7 +152,8 @@ fn compile(filename: &str, option: ArgOption, print: bool) -> String {
         }
         ArgOption::Source => {
             let tokens = lexer::lexer(filename.clone());
-            let parsed_program = parser::parser(tokens);
+            let mut parsed_program = parser::parser(tokens);
+            semantic_analysis::semantic_analysis(&mut parsed_program);
             let tacky_program = tacky::emit_tacky(parsed_program);
             let asm_program = assembler::assembler(tacky_program);
             code_emission::code_emission(asm_program, filename);
@@ -158,7 +161,8 @@ fn compile(filename: &str, option: ArgOption, print: bool) -> String {
         }
         ArgOption::None => {
             let tokens = lexer::lexer(filename.clone());
-            let parsed_program = parser::parser(tokens);
+            let mut parsed_program = parser::parser(tokens);
+            semantic_analysis::semantic_analysis(&mut parsed_program);
             let tacky_program = tacky::emit_tacky(parsed_program);
             let asm_program = assembler::assembler(tacky_program);
             code_emission::code_emission(asm_program, filename)

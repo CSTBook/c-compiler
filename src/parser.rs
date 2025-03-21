@@ -34,7 +34,7 @@ pub enum Expression {
     Var(String),
     Unary(UnaryParser, Box<Expression>),
     Binary(BinaryParser, Box<Expression>, Box<Expression>),
-    Assignment(Box<Expression>, Box<Expression>),
+    Assignment(Box<Expression>, Box<Expression>), // var = exp
 }
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum UnaryParser {

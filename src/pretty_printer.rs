@@ -42,10 +42,9 @@ pub mod parser {
             }
             BlockItem::Declaration(declaration) => {
                 format!(
-                    "{}{}\n{})",
+                    "{}{}",
                     tabs(indent_level),
-                    pretty_printer_dec(declaration, indent_level + 1),
-                    tabs(indent_level)
+                    pretty_printer_dec(declaration, indent_level + 1)
                 )
             }
         }
@@ -54,9 +53,10 @@ pub mod parser {
     fn pretty_printer_dec(declaration: &Declaration, indent_level: usize) -> String {
         if let Some(exp) = &declaration.init {
             return format!(
-                "Declaration({}=\n{}",
+                "Declaration({}=\n{}\n{})",
                 declaration.name,
-                pretty_printer_expr(exp, indent_level + 1)
+                pretty_printer_expr(exp, indent_level + 1),
+                tabs(indent_level-1)
             );
         }
         format!("Declaration({})", declaration.name) //uninitialized variable
