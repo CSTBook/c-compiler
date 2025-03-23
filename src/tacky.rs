@@ -1,6 +1,8 @@
 use std::sync::Mutex;
 
-use crate::parser::{self, BinaryParser, BlockItem, Function, Program, Statement, UnaryParser};
+use crate::parser::{
+    self, BinaryParser, BlockItem, Expression, Function, Program, Statement, UnaryParser,
+};
 
 pub struct TackyProgram {
     pub function: TackyFunction,
@@ -148,6 +150,27 @@ fn parse_exp(
 
                 instructions.push(TackyInstruction::Label(end));
                 TackyValue::Var(result)
+            }
+            BinaryParser::PostfixIncrement | BinaryParser::PostfixDecrement => {
+                let tmp = make_temporary_variable();
+                if let Expression::Var(name) = *val1 {
+                    instructions.push(TackyInstruction::Copy(
+                        TackyValue::Var(name.clone()),
+                        TackyValue::Var(tmp.clone()),
+                    ));
+                    instructions.push(TackyInstruction::Binary(
+                        match binop {
+                            BinaryParser::PostfixIncrement => BinaryParser::Add,
+                            BinaryParser::PostfixDecrement => BinaryParser::Subtract,
+                            _ => unreachable!(),
+                        },
+                        TackyValue::Var(name.clone()),
+                        TackyValue::Constant(1),
+                        TackyValue::Var(name),
+                    ));
+                }
+
+                TackyValue::Var(tmp)
             }
             _ => {
                 let src1 = parse_exp(*val1, instructions);

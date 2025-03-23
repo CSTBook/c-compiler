@@ -88,7 +88,7 @@ pub mod parser {
                     UnaryParser::Negate => "Negate",
                     UnaryParser::Not => "Not",
                 };
-                output += &format!("){}", pretty_printer_expr(ast_node, indent_level + 1));
+                output += &format!(")\n{}", pretty_printer_expr(ast_node, indent_level + 1));
                 output
             }
             Expression::Binary(binop, left, right) => {
@@ -134,6 +134,8 @@ pub mod parser {
             BinaryParser::LessOrEqual => format!("{}LessOrEqual", tabs(indent_level)),
             BinaryParser::GreaterThan => format!("{}GreaterThan", tabs(indent_level)),
             BinaryParser::GreaterOrEqual => format!("{}GreaterOrEqual", tabs(indent_level)),
+            BinaryParser::PostfixIncrement => format!("{}PostfixIncrement", tabs(indent_level)),
+            BinaryParser::PostfixDecrement => format!("{}PostfixDecrement", tabs(indent_level)),
         }
     }
 }
@@ -214,6 +216,8 @@ pub mod tacky {
                     BinaryParser::LessOrEqual => "LessOrEqual",
                     BinaryParser::GreaterThan => "GreaterThan",
                     BinaryParser::GreaterOrEqual => "GreaterOrEqual",
+                    BinaryParser::PostfixIncrement => "PostfixDecrement",
+                    BinaryParser::PostfixDecrement => "PostfixIncrement",
                 };
                 output += &format!(
                     ")(\n{}\n{}\n{}) in {}",

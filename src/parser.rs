@@ -1,7 +1,5 @@
 use regex::Regex;
 
-//TODO: IMPLEMENT INCREMENT OPERATORS (POSTFIX AND PREFIX)
-
 pub struct Program {
     pub function: Function,
 }
@@ -64,6 +62,8 @@ pub enum BinaryParser {
     LessOrEqual,
     GreaterThan,
     GreaterOrEqual,
+    PostfixIncrement,
+    PostfixDecrement,
 }
 
 pub fn parser(mut tokens: Vec<String>) -> Program {
@@ -168,7 +168,8 @@ fn parse_expression(tokens: &mut Vec<String>, min_precedence: i32) -> Expression
     let mut next_token = tokens.first().unwrap().clone();
     let binary_tokens = [
         "+", "-", "*", "/", "%", "|", "%", "|", "^", "&", ">>", "<<", "&&", "||", "==", "!=", ">",
-        "<", ">=", "<=", "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=",
+        "<", ">=", "<=", "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", "++",
+        "--",
     ];
     while binary_tokens.contains(&next_token.as_str())
         && get_precedence(next_token.to_string()) >= min_precedence
@@ -180,125 +181,37 @@ fn parse_expression(tokens: &mut Vec<String>, min_precedence: i32) -> Expression
                 let right = parse_expression(tokens, get_precedence(next_token.to_string())); //so that we get right associativity
                 left = Expression::Assignment(Box::new(left), Box::new(right));
             }
-            "+=" => {
-                tokens.remove(0);
+            "+=" | "-=" | "*=" | "/=" | "%=" | "|=" | "&=" | "^=" | ">>=" | "<<=" => {
+                let binop = parse_binop(tokens);
                 let right = parse_expression(tokens, get_precedence(next_token.to_string())); //so that we get right associativity
                 left = Expression::Assignment(
                     Box::new(left.clone()),
-                    Box::new(Expression::Binary(
-                        BinaryParser::Add,
-                        Box::new(left),
-                        Box::new(right),
-                    )),
+                    Box::new(Expression::Binary(binop, Box::new(left), Box::new(right))),
                 );
             }
-            "-=" => {
-                tokens.remove(0);
-                let right = parse_expression(tokens, get_precedence(next_token.to_string())); //so that we get right associativity
-                left = Expression::Assignment(
-                    Box::new(left.clone()),
-                    Box::new(Expression::Binary(
-                        BinaryParser::Subtract,
+            "++" | "--" => {
+                left = match &left {
+                    Expression::Var(_) => Expression::Binary(
+                        parse_binop(tokens),
                         Box::new(left),
-                        Box::new(right),
-                    )),
-                );
-            }
-            "/=" => {
-                tokens.remove(0);
-                let right = parse_expression(tokens, get_precedence(next_token.to_string())); //so that we get right associativity
-                left = Expression::Assignment(
-                    Box::new(left.clone()),
-                    Box::new(Expression::Binary(
-                        BinaryParser::Divide,
-                        Box::new(left),
-                        Box::new(right),
-                    )),
-                );
-            }
-            "*=" => {
-                tokens.remove(0);
-                let right = parse_expression(tokens, get_precedence(next_token.to_string())); //so that we get right associativity
-                left = Expression::Assignment(
-                    Box::new(left.clone()),
-                    Box::new(Expression::Binary(
-                        BinaryParser::Multiply,
-                        Box::new(left),
-                        Box::new(right),
-                    )),
-                );
-            }
-            "%=" => {
-                tokens.remove(0);
-                let right = parse_expression(tokens, get_precedence(next_token.to_string())); //so that we get right associativity
-                left = Expression::Assignment(
-                    Box::new(left.clone()),
-                    Box::new(Expression::Binary(
-                        BinaryParser::Remainder,
-                        Box::new(left),
-                        Box::new(right),
-                    )),
-                );
-            }
-            "&=" => {
-                tokens.remove(0);
-                let right = parse_expression(tokens, get_precedence(next_token.to_string())); //so that we get right associativity
-                left = Expression::Assignment(
-                    Box::new(left.clone()),
-                    Box::new(Expression::Binary(
-                        BinaryParser::BitwiseAnd,
-                        Box::new(left),
-                        Box::new(right),
-                    )),
-                );
-            }
-            "|=" => {
-                tokens.remove(0);
-                let right = parse_expression(tokens, get_precedence(next_token.to_string())); //so that we get right associativity
-                left = Expression::Assignment(
-                    Box::new(left.clone()),
-                    Box::new(Expression::Binary(
-                        BinaryParser::BitwiseOr,
-                        Box::new(left),
-                        Box::new(right),
-                    )),
-                );
-            }
-            "^=" => {
-                tokens.remove(0);
-                let right = parse_expression(tokens, get_precedence(next_token.to_string())); //so that we get right associativity
-                left = Expression::Assignment(
-                    Box::new(left.clone()),
-                    Box::new(Expression::Binary(
-                        BinaryParser::BitwiseXor,
-                        Box::new(left),
-                        Box::new(right),
-                    )),
-                );
-            }
-            "<<=" => {
-                tokens.remove(0);
-                let right = parse_expression(tokens, get_precedence(next_token.to_string())); //so that we get right associativity
-                left = Expression::Assignment(
-                    Box::new(left.clone()),
-                    Box::new(Expression::Binary(
-                        BinaryParser::BitwiseLeftShift,
-                        Box::new(left),
-                        Box::new(right),
-                    )),
-                );
-            }
-            ">>=" => {
-                tokens.remove(0);
-                let right = parse_expression(tokens, get_precedence(next_token.to_string())); //so that we get right associativity
-                left = Expression::Assignment(
-                    Box::new(left.clone()),
-                    Box::new(Expression::Binary(
-                        BinaryParser::BitwiseRightShift,
-                        Box::new(left),
-                        Box::new(right),
-                    )),
-                );
+                        Box::new(Expression::Constant(1)),
+                    ),
+                    Expression::Unary(unop, expression) => {
+                        //since unary has lower precedence than postfix
+                        match **expression {
+                            Expression::Var(_) => Expression::Unary(
+                                unop.clone(),
+                                Box::new(Expression::Binary(
+                                    parse_binop(tokens),
+                                    expression.clone(),
+                                    Box::new(Expression::Constant(1)),
+                                )),
+                            ),
+                            _ => panic!("ERROR: Use of '{}' on non modifiable l-value", next_token),
+                        }
+                    }
+                    _ => panic!("ERROR: Use of '{}' on non modifiable l-value", next_token),
+                }
             }
             _ => {
                 let operator = parse_binop(tokens);
@@ -316,18 +229,28 @@ fn parse_factor(tokens: &mut Vec<String>) -> Expression {
     let next_token = tokens.first().unwrap();
     if next_token.parse::<i32>().is_ok() {
         Expression::Constant(tokens.remove(0).parse::<i32>().unwrap())
-    } else if next_token == "-" || next_token == "~" || next_token == "!"{
+    } else if next_token == "-" || next_token == "~" || next_token == "!" {
         let operator = parse_unop(tokens.remove(0));
         let inner_exp = parse_factor(tokens);
         Expression::Unary(operator, Box::new(inner_exp))
-    } else if next_token == "--" {
-        tokens.remove(0);
+    } else if next_token == "--" || next_token == "++" {
+        let binop = match tokens.remove(0).as_str() {
+            "++" => BinaryParser::Add,
+            "--" => BinaryParser::Subtract,
+            _ => unreachable!()
+        };
         let exp = parse_factor(tokens);
-        Expression::Binary(BinaryParser::Subtract, Box::new(exp), Box::new(Expression::Constant(1)))
-    } else if next_token == "++" {
-        tokens.remove(0);
-        let exp = parse_factor(tokens);
-        Expression::Binary(BinaryParser::Add, Box::new(exp), Box::new(Expression::Constant(1)))
+        if !matches!(exp, Expression::Var(_)) {
+            panic!("Attempted to use prefix on non-lvalue");
+        }
+        Expression::Assignment(
+            Box::new(exp.clone()),
+            Box::new(Expression::Binary(
+                binop,
+                Box::new(exp),
+                Box::new(Expression::Constant(1)),
+            )),
+        )
     } else if next_token == "(" {
         tokens.remove(0);
         let inner_exp = parse_expression(tokens, 0);
@@ -352,6 +275,7 @@ fn get_precedence(token: String) -> i32 {
         "<<" | ">>" => 10,
         "+" | "-" => 11,
         "*" | "/" | "%" => 12,
+        "++" | "--" => 14,
         _ => unreachable!("Binary Operator Precedence Error"),
     }
 }
@@ -359,16 +283,16 @@ fn get_precedence(token: String) -> i32 {
 fn parse_binop(tokens: &mut Vec<String>) -> BinaryParser {
     let binop = tokens.remove(0);
     match binop.as_str() {
-        "+" => BinaryParser::Add,
-        "-" => BinaryParser::Subtract,
-        "*" => BinaryParser::Multiply,
-        "/" => BinaryParser::Divide,
-        "%" => BinaryParser::Remainder,
-        "|" => BinaryParser::BitwiseOr,
-        "^" => BinaryParser::BitwiseXor,
-        "&" => BinaryParser::BitwiseAnd,
-        "<<" => BinaryParser::BitwiseLeftShift,
-        ">>" => BinaryParser::BitwiseRightShift,
+        "+" | "+=" => BinaryParser::Add,
+        "-" | "-=" => BinaryParser::Subtract,
+        "*" | "*=" => BinaryParser::Multiply,
+        "/" | "/=" => BinaryParser::Divide,
+        "%" | "%=" => BinaryParser::Remainder,
+        "|" | "|=" => BinaryParser::BitwiseOr,
+        "^" | "^=" => BinaryParser::BitwiseXor,
+        "&" | "&=" => BinaryParser::BitwiseAnd,
+        "<<" | "<<=" => BinaryParser::BitwiseLeftShift,
+        ">>" | ">>=" => BinaryParser::BitwiseRightShift,
         "&&" => BinaryParser::And,
         "||" => BinaryParser::Or,
         "==" => BinaryParser::Equal,
@@ -377,7 +301,9 @@ fn parse_binop(tokens: &mut Vec<String>) -> BinaryParser {
         ">=" => BinaryParser::GreaterOrEqual,
         "<" => BinaryParser::LessThan,
         "<=" => BinaryParser::LessOrEqual,
-        _ => unreachable!("Binary Operator Parsing Error"),
+        "++" => BinaryParser::PostfixIncrement,
+        "--" => BinaryParser::PostfixDecrement,
+        _ => unreachable!("Binary Operator Parsing Error, '{}'", binop),
     }
 }
 
