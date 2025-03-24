@@ -296,6 +296,7 @@ fn parse_factor(tokens: &mut Vec<String>) -> Expression {
 fn get_precedence(token: String) -> i32 {
     match token.as_str() {
         "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | ">>=" | "<<=" => 1,
+        "?" => 2,
         "||" => 3,
         "&&" => 4,
         "|" => 5,
@@ -306,7 +307,6 @@ fn get_precedence(token: String) -> i32 {
         "<<" | ">>" => 10,
         "+" | "-" => 11,
         "*" | "/" | "%" => 12,
-        "?" => 13,
         "++" | "--" => 14,
         _ => unreachable!("Binary Operator Precedence Error"),
     }
