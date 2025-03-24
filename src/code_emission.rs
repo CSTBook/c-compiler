@@ -12,12 +12,12 @@ pub fn code_emission(program: AsmProgram, filename: String) -> String {
 }
 
 fn code_gen(program: AsmProgram) -> String {
-    code_gen_fn(program.function)// + "\n.section .note.GNU-stack,\"\",@progbits\n"
+    code_gen_fn(program.function) + "\n.section .note.GNU-stack,\"\",@progbits\n"
 }
 
 fn code_gen_fn(function: AsmFunction) -> String {
     let mut output = format!(
-        "\t.globl _{}\n_{}:\n\tpushq\t%rbp\n\tmovq\t%rsp, %rbp",
+        "\t.globl {}\n{}:\n\tpushq\t%rbp\n\tmovq\t%rsp, %rbp",
         function.name, function.name
     );
     for instruction in function.instructions {
@@ -57,12 +57,12 @@ fn code_gen_instr(instruction: Instruction) -> String {
             code_gen_op(op1, false),
             code_gen_op(op2, false)
         ),
-        Instruction::Jmp(label) => format!("\tjmp L{label}"),
-        Instruction::JmpCC(cc, label) => format!("\tj{}\tL{}", code_gen_cc(cc), label),
+        Instruction::Jmp(label) => format!("\tjmp .L{label}"),
+        Instruction::JmpCC(cc, label) => format!("\tj{}\t.L{}", code_gen_cc(cc), label),
         Instruction::SetCC(cc, op) => {
             format!("\tset{}\t{}", code_gen_cc(cc), code_gen_op(op, true))
         }
-        Instruction::Label(label) => format!("\tL{label}:"),
+        Instruction::Label(label) => format!("\t.L{label}:"),
     }
 }
 

@@ -61,6 +61,7 @@ pub fn lexer(filename: String) -> Vec<String> {
         r"else",
         r"\?",
         r":",
+        r"[a-zA-Z_]\w*\b\s*:", //TODO: Distinguish between the colon in a goto label and that of a ternary operator
     ];
 
     let token_regexes: Vec<Regex> = tokens.iter().map(|x| Regex::new(x).unwrap()).collect();
@@ -96,4 +97,9 @@ pub fn lexer(filename: String) -> Vec<String> {
     }
 
     tokens
+        .iter()
+        .map(|token| token.replace(|c: char| c.is_whitespace(), ""))
+        .collect()
+
+    // tokens
 }

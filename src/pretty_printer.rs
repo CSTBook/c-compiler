@@ -95,6 +95,12 @@ pub mod parser {
 
                 output
             }
+            Statement::Label(label_name) => {
+                format!("{}Label({})", tabs(indent_level - 3), label_name)
+            }
+            Statement::Goto(label_name) => {
+                format!("{}Goto({})", tabs(indent_level - 3), label_name)
+            }
         }
     }
 
@@ -134,13 +140,15 @@ pub mod parser {
                 )
             }
             Expression::Conditional(condition, then, right) => format!(
-                "If\n{}condition={},\n{}then={},\n{}else={},",
+                "{}If (\n{}condition=\n{},\n{}then=\n{},\n{}else=\n{},\n{})",
+                tabs(indent_level),
                 tabs(indent_level + 1),
                 pretty_printer_expr(condition, indent_level + 2),
                 tabs(indent_level + 1),
                 pretty_printer_expr(then, indent_level + 2),
                 tabs(indent_level + 1),
-                pretty_printer_expr(right, indent_level + 2)
+                pretty_printer_expr(right, indent_level + 2),
+                tabs(indent_level)
             ),
         }
     }

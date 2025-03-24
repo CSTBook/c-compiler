@@ -98,7 +98,9 @@ fn parse_instructions(instructions_ast: &parser::BlockItem) -> Vec<TackyInstruct
                 }
 
                 instructions.push(TackyInstruction::Label(end_label));
-            },
+            }
+            Statement::Label(label_name) => instructions.push(TackyInstruction::Label(label_name)),
+            Statement::Goto(label_name) => instructions.push(TackyInstruction::Jump(label_name)),
         },
     }
     instructions
@@ -225,12 +227,18 @@ fn parse_exp(
 
             instructions.push(TackyInstruction::JumpIfZero(cond, else_label.clone()));
             let val1 = parse_exp(*then, instructions);
-            instructions.push(TackyInstruction::Copy(val1, TackyValue::Var(result.clone())));
+            instructions.push(TackyInstruction::Copy(
+                val1,
+                TackyValue::Var(result.clone()),
+            ));
             instructions.push(TackyInstruction::Jump(end_label.clone()));
 
             instructions.push(TackyInstruction::Label(else_label));
             let val2 = parse_exp(*right, instructions);
-            instructions.push(TackyInstruction::Copy(val2, TackyValue::Var(result.clone())));
+            instructions.push(TackyInstruction::Copy(
+                val2,
+                TackyValue::Var(result.clone()),
+            ));
 
             instructions.push(TackyInstruction::Label(end_label));
 

@@ -26,6 +26,8 @@ pub enum Statement {
     Return(Expression),
     Expression(Expression),
     If(Expression, Box<Statement>, Option<Box<Statement>>),
+    Label(String),
+    Goto(String),
     Null,
 }
 
@@ -114,7 +116,7 @@ fn parse_function(tokens: &mut Vec<String>) -> Function {
 fn check_name(name: &String) {
     let first = name.chars().next().unwrap().to_string();
     let re = Regex::new(r"[A-Z]|[a-z]|_").unwrap();
-    let keywords = ["int", "return", "void"];
+    let keywords = ["int", "return", "void", "goto", "if", "else"];
     if !re.is_match(&first) || keywords.contains(&name.as_str()) {
         panic!("Invalid name \"{}\"", name);
     }
@@ -145,39 +147,48 @@ fn parse_declaration(tokens: &mut Vec<String>) -> Declaration {
 }
 
 fn parse_statement(tokens: &mut Vec<String>) -> Statement {
-    let next_token = tokens.first().unwrap();
-    match next_token.as_str() {
-        "return" => {
-            tokens.remove(0);
-            let exp = parse_expression(tokens, 0);
-            expect(";", tokens);
-            Statement::Return(exp)
-        }
-        ";" => {
-            tokens.remove(0);
-            Statement::Null
-        }
-        "if" => {
-            tokens.remove(0);
-            expect("(", tokens);
-            let condition = parse_expression(tokens, 0);
-            expect(")", tokens);
-            let then = parse_statement(tokens);
-            let else_token = match tokens.first().unwrap().as_str() {
-                "else" => {
-                    tokens.remove(0);
-                    Some(Box::new(parse_statement(tokens)))
-                }
-                _ => None,
-            };
+    let next_token = tokens.first().unwrap().as_str();
+    if next_token == "return" {
+        tokens.remove(0);
+        let exp = parse_expression(tokens, 0);
+        expect(";", tokens);
+        Statement::Return(exp)
+    } else if next_token == ";" {
+        tokens.remove(0);
+        Statement::Null
+    } else if next_token == "if" {
+        tokens.remove(0);
+        expect("(", tokens);
+        let condition = parse_expression(tokens, 0);
+        expect(")", tokens);
+        let then = parse_statement(tokens);
+        let else_token = match tokens.first().unwrap().as_str() {
+            "else" => {
+                tokens.remove(0);
+                Some(Box::new(parse_statement(tokens)))
+            }
+            _ => None,
+        };
 
-            Statement::If(condition, Box::new(then), else_token)
-        }
-        _ => {
-            let exp = parse_expression(tokens, 0);
-            expect(";", tokens);
-            Statement::Expression(exp)
-        }
+        Statement::If(condition, Box::new(then), else_token)
+    } else if Regex::new(r"[a-zA-Z_]\w*\b:").unwrap().is_match(next_token) {
+        //label
+        let mut label_name = tokens.remove(0);
+        label_name = label_name[..label_name.len() - 1].to_string();
+
+        check_name(&label_name);
+
+        Statement::Label(label_name)
+    } else if next_token == "goto" {
+        tokens.remove(0);
+        let goto_label = tokens.remove(0);
+        expect(";", tokens);
+
+        Statement::Goto(goto_label)
+    } else {
+        let exp = parse_expression(tokens, 0);
+        expect(";", tokens);
+        Statement::Expression(exp)
     }
 }
 
@@ -257,7 +268,7 @@ fn parse_conditional_middle(tokens: &mut Vec<String>) -> Expression {
 }
 
 fn parse_factor(tokens: &mut Vec<String>) -> Expression {
-    let next_token = tokens.first().unwrap();
+    let mut next_token = tokens.first().unwrap().clone();
     if next_token.parse::<i32>().is_ok() {
         Expression::Constant(tokens.remove(0).parse::<i32>().unwrap())
     } else if next_token == "-" || next_token == "~" || next_token == "!" {
@@ -288,8 +299,13 @@ fn parse_factor(tokens: &mut Vec<String>) -> Expression {
         expect(")", tokens);
         inner_exp
     } else {
-        check_name(next_token);
-        Expression::Var(tokens.remove(0))
+        if next_token.contains(":") {
+            //deal with ternary ops
+            next_token = next_token[0..next_token.len() - 1].to_string();
+            tokens.insert(1, String::from(":"));
+        }
+        check_name(&next_token);
+        Expression::Var(tokens.remove(0).replace(":", ""))
     }
 }
 
