@@ -59,6 +59,11 @@ fn resolve_statement(
         Statement::Return(exp) => Statement::Return(resolve_expression(exp, variable_map)),
         Statement::Expression(exp) => Statement::Expression(resolve_expression(exp, variable_map)),
         Statement::Null => Statement::Null,
+        Statement::If(cond, then, otherwise) => Statement::If(
+            resolve_expression(cond, variable_map),
+            Box::new(resolve_statement(*then, variable_map)),
+            otherwise.map(|stmt| Box::new(resolve_statement(*stmt, variable_map))),
+        ),
     }
 }
 
@@ -87,6 +92,11 @@ fn resolve_expression(exp: Expression, variable_map: &mut HashMap<String, String
             binop,
             Box::new(resolve_expression(*exp1, variable_map)),
             Box::new(resolve_expression(*exp2, variable_map)),
+        ),
+        Expression::Conditional(cond, middle, right) => Expression::Conditional(
+            Box::new(resolve_expression(*cond, variable_map)),
+            Box::new(resolve_expression(*middle, variable_map)),
+            Box::new(resolve_expression(*right, variable_map)),
         ),
     }
 }

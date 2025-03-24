@@ -81,6 +81,24 @@ fn parse_instructions(instructions_ast: &parser::BlockItem) -> Vec<TackyInstruct
                 ));
             }
             Statement::Null => (),
+            Statement::If(cond, then, otherwise) => {
+                let cond = parse_exp(cond, &mut instructions);
+                let else_label = make_temporary_label("else");
+                let end_label = make_temporary_label("end");
+
+                if let Some(other) = otherwise {
+                    instructions.push(TackyInstruction::JumpIfZero(cond, else_label.clone()));
+                    instructions.extend(parse_instructions(&BlockItem::Statement(*then)));
+                    instructions.push(TackyInstruction::Jump(end_label.clone()));
+                    instructions.push(TackyInstruction::Label(else_label));
+                    instructions.extend(parse_instructions(&BlockItem::Statement(*other)));
+                } else {
+                    instructions.push(TackyInstruction::JumpIfZero(cond, end_label.clone()));
+                    instructions.extend(parse_instructions(&BlockItem::Statement(*then)));
+                }
+
+                instructions.push(TackyInstruction::Label(end_label));
+            },
         },
     }
     instructions
@@ -198,6 +216,25 @@ fn parse_exp(
                 return TackyValue::Var(name);
             }
             unreachable!();
+        }
+        parser::Expression::Conditional(cond, then, right) => {
+            let cond = parse_exp(*cond, instructions);
+            let else_label = make_temporary_label("else");
+            let end_label = make_temporary_label("end");
+            let result = make_temporary_variable();
+
+            instructions.push(TackyInstruction::JumpIfZero(cond, else_label.clone()));
+            let val1 = parse_exp(*then, instructions);
+            instructions.push(TackyInstruction::Copy(val1, TackyValue::Var(result.clone())));
+            instructions.push(TackyInstruction::Jump(end_label.clone()));
+
+            instructions.push(TackyInstruction::Label(else_label));
+            let val2 = parse_exp(*right, instructions);
+            instructions.push(TackyInstruction::Copy(val2, TackyValue::Var(result.clone())));
+
+            instructions.push(TackyInstruction::Label(end_label));
+
+            TackyValue::Var(result)
         }
     }
 }

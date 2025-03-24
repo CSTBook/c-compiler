@@ -73,6 +73,28 @@ pub mod parser {
                 pretty_printer_expr(expression, indent_level + 1)
             ),
             Statement::Null => String::from("Null"),
+            Statement::If(condition, then, else_statement) => {
+                let mut output = format!(
+                    "{}If (\n{}condition=\n{},\n{}then={},",
+                    tabs(indent_level),
+                    tabs(indent_level + 1),
+                    pretty_printer_expr(condition, indent_level + 2),
+                    tabs(indent_level + 1),
+                    pretty_printer_statement(then, indent_level + 2)
+                );
+                if let Some(stmt) = else_statement {
+                    output += format!(
+                        "\n{}else={},",
+                        tabs(indent_level + 1),
+                        pretty_printer_statement(stmt, indent_level + 2)
+                    )
+                    .as_str();
+                }
+
+                output += &format!("\n{})", tabs(indent_level));
+
+                output
+            }
         }
     }
 
@@ -111,6 +133,15 @@ pub mod parser {
                     tabs(indent_level)
                 )
             }
+            Expression::Conditional(condition, then, right) => format!(
+                "If\n{}condition={},\n{}then={},\n{}else={},",
+                tabs(indent_level + 1),
+                pretty_printer_expr(condition, indent_level + 2),
+                tabs(indent_level + 1),
+                pretty_printer_expr(then, indent_level + 2),
+                tabs(indent_level + 1),
+                pretty_printer_expr(right, indent_level + 2)
+            ),
         }
     }
 

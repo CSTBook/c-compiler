@@ -25,6 +25,7 @@ pub struct Declaration {
 pub enum Statement {
     Return(Expression),
     Expression(Expression),
+    If(Expression, Box<Statement>, Option<Box<Statement>>),
     Null,
 }
 
@@ -35,6 +36,7 @@ pub enum Expression {
     Unary(UnaryParser, Box<Expression>),
     Binary(BinaryParser, Box<Expression>, Box<Expression>),
     Assignment(Box<Expression>, Box<Expression>), // var = exp
+    Conditional(Box<Expression>, Box<Expression>, Box<Expression>), //condition ? then : else
 }
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum UnaryParser {
@@ -155,6 +157,22 @@ fn parse_statement(tokens: &mut Vec<String>) -> Statement {
             tokens.remove(0);
             Statement::Null
         }
+        "if" => {
+            tokens.remove(0);
+            expect("(", tokens);
+            let condition = parse_expression(tokens, 0);
+            expect(")", tokens);
+            let then = parse_statement(tokens);
+            let else_token = match tokens.first().unwrap().as_str() {
+                "else" => {
+                    tokens.remove(0);
+                    Some(Box::new(parse_statement(tokens)))
+                }
+                _ => None,
+            };
+
+            Statement::If(condition, Box::new(then), else_token)
+        }
         _ => {
             let exp = parse_expression(tokens, 0);
             expect(";", tokens);
@@ -169,7 +187,7 @@ fn parse_expression(tokens: &mut Vec<String>, min_precedence: i32) -> Expression
     let binary_tokens = [
         "+", "-", "*", "/", "%", "|", "%", "|", "^", "&", ">>", "<<", "&&", "||", "==", "!=", ">",
         "<", ">=", "<=", "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", "++",
-        "--",
+        "?", "--",
     ];
     while binary_tokens.contains(&next_token.as_str())
         && get_precedence(next_token.to_string()) >= min_precedence
@@ -188,6 +206,11 @@ fn parse_expression(tokens: &mut Vec<String>, min_precedence: i32) -> Expression
                     Box::new(left.clone()),
                     Box::new(Expression::Binary(binop, Box::new(left), Box::new(right))),
                 );
+            }
+            "?" => {
+                let middle = parse_conditional_middle(tokens);
+                let right = parse_expression(tokens, get_precedence(next_token));
+                left = Expression::Conditional(Box::new(left), Box::new(middle), Box::new(right));
             }
             "++" | "--" => {
                 left = match &left {
@@ -225,6 +248,14 @@ fn parse_expression(tokens: &mut Vec<String>, min_precedence: i32) -> Expression
     left
 }
 
+fn parse_conditional_middle(tokens: &mut Vec<String>) -> Expression {
+    tokens.remove(0);
+    let out = parse_expression(tokens, 0);
+    tokens.remove(0);
+
+    out
+}
+
 fn parse_factor(tokens: &mut Vec<String>) -> Expression {
     let next_token = tokens.first().unwrap();
     if next_token.parse::<i32>().is_ok() {
@@ -237,7 +268,7 @@ fn parse_factor(tokens: &mut Vec<String>) -> Expression {
         let binop = match tokens.remove(0).as_str() {
             "++" => BinaryParser::Add,
             "--" => BinaryParser::Subtract,
-            _ => unreachable!()
+            _ => unreachable!(),
         };
         let exp = parse_factor(tokens);
         if !matches!(exp, Expression::Var(_)) {
@@ -275,6 +306,7 @@ fn get_precedence(token: String) -> i32 {
         "<<" | ">>" => 10,
         "+" | "-" => 11,
         "*" | "/" | "%" => 12,
+        "?" => 13,
         "++" | "--" => 14,
         _ => unreachable!("Binary Operator Precedence Error"),
     }
