@@ -6,6 +6,11 @@ pub struct Program {
 
 pub struct Function {
     pub name: String,
+    pub body: Block,
+}
+
+#[derive(Clone)]
+pub struct Block {
     pub body: Vec<BlockItem>,
 }
 
@@ -28,6 +33,7 @@ pub enum Statement {
     If(Expression, Box<Statement>, Option<Box<Statement>>),
     Label(String),
     Goto(String),
+    Compound(Block),
     Null,
 }
 
@@ -97,20 +103,25 @@ fn parse_function(tokens: &mut Vec<String>) -> Function {
     expect("(", tokens);
     expect("void", tokens);
     expect(")", tokens);
+
+    Function {
+        name: identifier,
+        body: parse_block(tokens),
+    }
+}
+
+fn parse_block(tokens: &mut Vec<String>) -> Block {
     expect("{", tokens);
 
-    let mut function_body: Vec<BlockItem> = Vec::new();
+    let mut body: Vec<BlockItem> = Vec::new();
     while tokens.first().unwrap() != "}" {
-        function_body.push(parse_block(tokens));
+        body.push(parse_block_item(tokens));
         // println!("{:?}",tokens);
     }
 
     expect("}", tokens);
 
-    Function {
-        name: identifier,
-        body: function_body,
-    }
+    Block { body }
 }
 
 fn check_name(name: &String) {
@@ -122,7 +133,7 @@ fn check_name(name: &String) {
     }
 }
 
-fn parse_block(tokens: &mut Vec<String>) -> BlockItem {
+fn parse_block_item(tokens: &mut Vec<String>) -> BlockItem {
     match tokens.first().unwrap().as_str() {
         "int" => BlockItem::Declaration(parse_declaration(tokens)),
         _ => BlockItem::Statement(parse_statement(tokens)),
@@ -185,6 +196,8 @@ fn parse_statement(tokens: &mut Vec<String>) -> Statement {
         expect(";", tokens);
 
         Statement::Goto(goto_label)
+    } else if next_token == "{" {
+        Statement::Compound(parse_block(tokens))
     } else {
         let exp = parse_expression(tokens, 0);
         expect(";", tokens);

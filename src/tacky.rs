@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
 use crate::parser::{
-    self, BinaryParser, BlockItem, Expression, Function, Program, Statement, UnaryParser,
+    self, BinaryParser, BlockItem, Expression, Function, Program, Statement, UnaryParser, Block
 };
 
 pub struct TackyProgram {
@@ -46,20 +46,25 @@ fn parse_function(function_ast: Function) -> TackyFunction {
     TackyFunction {
         name,
         body: {
-            let mut temp: Vec<TackyInstruction> = Vec::new();
-            for instruction in function_ast.body {
-                temp.extend(parse_instructions(&instruction));
-            }
+            let mut temp = parse_block(&function_ast.body);
             temp.push(TackyInstruction::Return(TackyValue::Constant(0))); //in case main function doesn't have a return statement
             temp
         },
     }
 }
 
-fn parse_instructions(instructions_ast: &parser::BlockItem) -> Vec<TackyInstruction> {
+fn parse_block(block_ast: &Block) -> Vec<TackyInstruction> {
+    let mut block: Vec<TackyInstruction> = Vec::new();
+    for block_item in block_ast.body.clone() {
+        block.extend(parse_block_item(&block_item));
+    }
+    block
+}
+
+fn parse_block_item(block_item_ast: &parser::BlockItem) -> Vec<TackyInstruction> {
     let mut instructions: Vec<TackyInstruction> = Vec::new();
-    let instructions_ast = instructions_ast.clone();
-    match instructions_ast {
+    let block_item_ast = block_item_ast.clone();
+    match block_item_ast {
         BlockItem::Declaration(declaration) => {
             let (name, init) = (declaration.name, declaration.init);
             if let Some(exp) = init {
@@ -88,19 +93,20 @@ fn parse_instructions(instructions_ast: &parser::BlockItem) -> Vec<TackyInstruct
 
                 if let Some(other) = otherwise {
                     instructions.push(TackyInstruction::JumpIfZero(cond, else_label.clone()));
-                    instructions.extend(parse_instructions(&BlockItem::Statement(*then)));
+                    instructions.extend(parse_block_item(&BlockItem::Statement(*then)));
                     instructions.push(TackyInstruction::Jump(end_label.clone()));
                     instructions.push(TackyInstruction::Label(else_label));
-                    instructions.extend(parse_instructions(&BlockItem::Statement(*other)));
+                    instructions.extend(parse_block_item(&BlockItem::Statement(*other)));
                 } else {
                     instructions.push(TackyInstruction::JumpIfZero(cond, end_label.clone()));
-                    instructions.extend(parse_instructions(&BlockItem::Statement(*then)));
+                    instructions.extend(parse_block_item(&BlockItem::Statement(*then)));
                 }
 
                 instructions.push(TackyInstruction::Label(end_label));
             }
             Statement::Label(label_name) => instructions.push(TackyInstruction::Label(label_name)),
             Statement::Goto(label_name) => instructions.push(TackyInstruction::Jump(label_name)),
+            Statement::Compound(block) => instructions.extend(parse_block(&block)),
         },
     }
     instructions

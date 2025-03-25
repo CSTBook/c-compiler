@@ -14,30 +14,39 @@ pub mod parser {
     }
 
     pub fn pretty_printer_fn(func: &Function, indent_level: usize) -> String {
-        let mut output = format!(
-            "{}Function(\n{}name=\"{}\"\n{}body=",
+        format!(
+            "{}Function(\n{}name=\"{}\"\n{}body=\n{}{}\n{})",
             tabs(indent_level),
             tabs(indent_level + 1),
             func.name,
-            tabs(indent_level + 1)
-        );
-        for instruction in func.body.clone() {
-            output +=
-                format!("\n{}", pretty_printer_block(&instruction, indent_level + 1)).as_str();
-        }
+            tabs(indent_level + 1),
+            tabs(indent_level+1),
+            pretty_printer_block(&func.body, indent_level + 1),
+            tabs(indent_level)
+        )
+    }
 
+    pub fn pretty_printer_block(block: &Block, indent_level: usize) -> String {
+        let mut output = String::from("Block(");
+        for instruction in block.body.clone() {
+            output += format!(
+                "\n{}",
+                pretty_printer_block_item(&instruction, indent_level + 1)
+            )
+            .as_str();
+        }
         output += format!("\n{})", tabs(indent_level)).as_str();
+
         output
     }
 
-    pub fn pretty_printer_block(block: &BlockItem, indent_level: usize) -> String {
+    pub fn pretty_printer_block_item(block: &BlockItem, indent_level: usize) -> String {
         match block {
             BlockItem::Statement(statement) => {
                 format!(
-                    "{}{}\n{})",
+                    "{}{}",
                     tabs(indent_level),
                     pretty_printer_statement(statement, indent_level + 1),
-                    tabs(indent_level)
                 )
             }
             BlockItem::Declaration(declaration) => {
@@ -75,8 +84,7 @@ pub mod parser {
             Statement::Null => String::from("Null"),
             Statement::If(condition, then, else_statement) => {
                 let mut output = format!(
-                    "{}If (\n{}condition=\n{},\n{}then={},",
-                    tabs(indent_level),
+                    "If (\n{}condition=\n{},\n{}then={},",
                     tabs(indent_level + 1),
                     pretty_printer_expr(condition, indent_level + 2),
                     tabs(indent_level + 1),
@@ -96,11 +104,12 @@ pub mod parser {
                 output
             }
             Statement::Label(label_name) => {
-                format!("{}Label({})", tabs(indent_level - 3), label_name)
+                format!("Label({})", label_name)
             }
             Statement::Goto(label_name) => {
-                format!("{}Goto({})", tabs(indent_level - 3), label_name)
+                format!("Goto({})", label_name)
             }
+            Statement::Compound(block) => pretty_printer_block(block, indent_level),
         }
     }
 
