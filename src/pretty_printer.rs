@@ -20,7 +20,7 @@ pub mod parser {
             tabs(indent_level + 1),
             func.name,
             tabs(indent_level + 1),
-            tabs(indent_level+1),
+            tabs(indent_level + 1),
             pretty_printer_block(&func.body, indent_level + 1),
             tabs(indent_level)
         )

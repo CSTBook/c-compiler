@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
 use crate::parser::{
-    self, BinaryParser, BlockItem, Expression, Function, Program, Statement, UnaryParser, Block
+    self, BinaryParser, Block, BlockItem, Expression, Function, Program, Statement, UnaryParser,
 };
 
 pub struct TackyProgram {

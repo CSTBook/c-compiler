@@ -4,3 +4,5 @@ test_files/main.s
 test_files/main
 test_files/main.c
 .vscode/launch.json
+flamegraph.svg
+.DS_Store

@@ -5,7 +5,7 @@ use crate::parser::*;
 static TEMP_COUNTER: Mutex<i32> = Mutex::new(0);
 
 struct MapEntry {
-    name: String, 
+    name: String,
     from_curr_scope: bool,
 }
 
@@ -39,14 +39,17 @@ fn resolve_block(block: &Block, variable_map: &mut HashMap<String, MapEntry>) ->
 
 fn label_resolution(ast_program: &mut Program) -> HashMap<String, String> {
     let mut labels: HashMap<String, String> = HashMap::new();
-    
 
     ast_program.function.body = resolve_block_label(&ast_program.function.body, &mut labels, false);
 
     labels
 }
 
-fn resolve_block_label(block: &Block, labels: &mut HashMap<String, String>, check_goto: bool) -> Block {
+fn resolve_block_label(
+    block: &Block,
+    labels: &mut HashMap<String, String>,
+    check_goto: bool,
+) -> Block {
     let mut body = Vec::new();
 
     //ensure no duplicate labels and assign the labeling scheme
@@ -76,12 +79,12 @@ fn resolve_block_label(block: &Block, labels: &mut HashMap<String, String>, chec
 }
 
 fn goto_resolution(body: &mut Vec<BlockItem>, labels: &mut HashMap<String, String>) {
-        //ensure that no goto statements to nonexistant labels
-        for block_item in body {
-            if let BlockItem::Statement(statement) = block_item {
-                *block_item = BlockItem::Statement(resolve_statement_label(statement, labels, true));
-            }
+    //ensure that no goto statements to nonexistant labels
+    for block_item in body {
+        if let BlockItem::Statement(statement) = block_item {
+            *block_item = BlockItem::Statement(resolve_statement_label(statement, labels, true));
         }
+    }
 }
 
 fn resolve_statement_label(
@@ -125,7 +128,9 @@ fn resolve_statement_label(
             }
             Statement::Goto(labels.get(label_name).unwrap().to_string())
         }
-        Statement::Compound(block) => Statement::Compound(resolve_block_label(block, labels, check_goto)),
+        Statement::Compound(block) => {
+            Statement::Compound(resolve_block_label(block, labels, check_goto))
+        }
         _ => statement.clone(),
     }
 }
@@ -139,7 +144,13 @@ fn resolve_declaration(
         panic!("ERROR: Redeclared {name}");
     }
     let temp_name = make_temporary_variable(&name);
-    variable_map.insert(name, MapEntry { name: temp_name.clone(), from_curr_scope: true });
+    variable_map.insert(
+        name,
+        MapEntry {
+            name: temp_name.clone(),
+            from_curr_scope: true,
+        },
+    );
     if let Some(exp) = init {
         init = Some(resolve_expression(exp, variable_map));
     }
@@ -158,10 +169,10 @@ fn resolve_statement(
         Statement::Expression(exp) => Statement::Expression(resolve_expression(exp, variable_map)),
         Statement::Null => Statement::Null,
         Statement::If(cond, then, otherwise) => Statement::If(
-                        resolve_expression(cond, variable_map),
-                        Box::new(resolve_statement(*then, variable_map)),
-                        otherwise.map(|stmt| Box::new(resolve_statement(*stmt, variable_map))),
-            ),
+            resolve_expression(cond, variable_map),
+            Box::new(resolve_statement(*then, variable_map)),
+            otherwise.map(|stmt| Box::new(resolve_statement(*stmt, variable_map))),
+        ),
         Statement::Label(_) => statement,
         Statement::Goto(_) => statement,
         Statement::Compound(block) => {
@@ -222,8 +233,14 @@ fn copy_variable_map(variable_map: &HashMap<String, MapEntry>) -> HashMap<String
     let mut output: HashMap<String, MapEntry> = HashMap::new();
 
     for (name, map_entry) in variable_map {
-        output.insert(name.clone(), MapEntry { name: map_entry.name.clone(), from_curr_scope: false });
-    } 
+        output.insert(
+            name.clone(),
+            MapEntry {
+                name: map_entry.name.clone(),
+                from_curr_scope: false,
+            },
+        );
+    }
 
     output
 }

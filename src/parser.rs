@@ -76,6 +76,11 @@ pub enum BinaryParser {
     PostfixDecrement,
 }
 
+use std::sync::LazyLock;
+
+static LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[a-zA-Z_]\w*\b:").unwrap());
+static NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[A-Z]|[a-z]|_").unwrap());
+
 pub fn parser(mut tokens: Vec<String>) -> Program {
     let program = parse_program(&mut tokens);
 
@@ -126,9 +131,9 @@ fn parse_block(tokens: &mut Vec<String>) -> Block {
 
 fn check_name(name: &String) {
     let first = name.chars().next().unwrap().to_string();
-    let re = Regex::new(r"[A-Z]|[a-z]|_").unwrap();
+    // let re = Regex::new(r"[A-Z]|[a-z]|_").unwrap();
     let keywords = ["int", "return", "void", "goto", "if", "else"];
-    if !re.is_match(&first) || keywords.contains(&name.as_str()) {
+    if !NAME_REGEX.is_match(&first) || keywords.contains(&name.as_str()) {
         panic!("Invalid name \"{}\"", name);
     }
 }
@@ -182,7 +187,7 @@ fn parse_statement(tokens: &mut Vec<String>) -> Statement {
         };
 
         Statement::If(condition, Box::new(then), else_token)
-    } else if Regex::new(r"[a-zA-Z_]\w*\b:").unwrap().is_match(next_token) {
+    } else if LABEL_REGEX.is_match(next_token) {
         //label
         let mut label_name = tokens.remove(0);
         label_name = label_name[..label_name.len() - 1].to_string();
