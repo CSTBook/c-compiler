@@ -110,6 +110,55 @@ pub mod parser {
                 format!("Goto({})", label_name)
             }
             Statement::Compound(block) => pretty_printer_block(block, indent_level),
+            Statement::Break(label_name) => format!("Break({})", label_name),
+            Statement::Continue(label_name) => format!("Continue({})", label_name),
+            Statement::While(condition, body, label_name) => format!(
+                "While ({}) (\n{}condition=\n{},\n{}body=\n{}\n{})",
+                label_name,
+                tabs(indent_level + 1),
+                pretty_printer_expr(condition, indent_level + 1),
+                tabs(indent_level + 1),
+                pretty_printer_statement(body, indent_level + 1),
+                tabs(indent_level)
+            ),
+            Statement::DoWhile(body, condition, label_name) => format!(
+                "DoWhile ({}) (\n{}body=\n{},\n{}condition=\n{}\n{})",
+                label_name,
+                tabs(indent_level + 1),
+                pretty_printer_statement(body, indent_level + 1),
+                tabs(indent_level + 1),
+                pretty_printer_expr(condition, indent_level + 1),
+                tabs(indent_level)
+            ),
+            Statement::For(for_init, condition, post_exp, body, label_name) => {
+                let mut output = format!("For({}) (\n{}init=\n{}\n", label_name, tabs(indent_level+1), pretty_printer_for_init(for_init, indent_level+1));
+                if let Some(cond) = condition {
+                    output+=&format!("{}condition=\n{}\n", tabs(indent_level+1), pretty_printer_expr(cond, indent_level+1));
+                } else {
+                    output+=&format!("{}condition=None\n", tabs(indent_level+1));
+                }
+                if let Some(post) = post_exp {
+                    output+=&format!("{}post=\n{}\n", tabs(indent_level+1), pretty_printer_expr(post, indent_level+1));
+                } else {
+                    output+=&format!("{}post=None\n", tabs(indent_level+1));
+                }
+                output+=&format!("{}body=\n{}\n{})", tabs(indent_level+1), pretty_printer_statement(body, indent_level),tabs(indent_level));
+
+                output
+            }
+        }
+    }
+
+    fn pretty_printer_for_init(init: &ForInit, indent_level: usize) -> String {
+        match init {
+            ForInit::InitDecl(declaration) => pretty_printer_dec(declaration, indent_level),
+            ForInit::InitExp(expression) => {
+                if let Some(exp) = expression {
+                    pretty_printer_expr(exp, indent_level)
+                } else {
+                    format!("\n{}None", tabs(indent_level))
+                }
+            },
         }
     }
 

@@ -107,6 +107,11 @@ fn parse_block_item(block_item_ast: &parser::BlockItem) -> Vec<TackyInstruction>
             Statement::Label(label_name) => instructions.push(TackyInstruction::Label(label_name)),
             Statement::Goto(label_name) => instructions.push(TackyInstruction::Jump(label_name)),
             Statement::Compound(block) => instructions.extend(parse_block(&block)),
+            Statement::Break(_) => todo!(),
+            Statement::Continue(_) => todo!(),
+            Statement::While(expression, statement, _) => todo!(),
+            Statement::DoWhile(statement, expression, _) => todo!(),
+            Statement::For(for_init, expression, expression1, statement, _) => todo!(),
         },
     }
     instructions

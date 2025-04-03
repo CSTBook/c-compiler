@@ -35,6 +35,23 @@ pub enum Statement {
     Goto(String),
     Compound(Block),
     Null,
+    Break(String),                               //label
+    Continue(String),                            //label
+    While(Expression, Box<Statement>, String),   //condition, body, label
+    DoWhile(Box<Statement>, Expression, String), //body, condition, label
+    For(
+        ForInit,
+        Option<Expression>,
+        Option<Expression>,
+        Box<Statement>,
+        String,
+    ), //init, condition, post, body, label
+}
+
+#[derive(Clone)]
+pub enum ForInit {
+    InitDecl(Declaration),
+    InitExp(Option<Expression>),
 }
 
 #[derive(Clone)]
@@ -76,10 +93,11 @@ pub enum BinaryParser {
     PostfixDecrement,
 }
 
-use std::sync::LazyLock;
+use std::sync::{LazyLock, Mutex};
 
 static LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[a-zA-Z_]\w*\b:").unwrap());
 static NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[A-Z]|[a-z]|_").unwrap());
+static TEMP_COUNTER: Mutex<i32> = Mutex::new(0);
 
 pub fn parser(mut tokens: Vec<String>) -> Program {
     let program = parse_program(&mut tokens);
@@ -203,11 +221,79 @@ fn parse_statement(tokens: &mut Vec<String>) -> Statement {
         Statement::Goto(goto_label)
     } else if next_token == "{" {
         Statement::Compound(parse_block(tokens))
+    } else if next_token == "break" {
+        tokens.remove(0);
+        let name = make_temporary_label("break_to", false);
+        expect(";", tokens);
+        Statement::Break(name)
+    } else if next_token == "continue" {
+        tokens.remove(0);
+        let name = make_temporary_label("continue_to", false);
+        expect(";", tokens);
+        Statement::Continue(name)
+    } else if next_token == "while" {
+        tokens.remove(0);
+        expect("(", tokens);
+        let condition = parse_expression(tokens, 0);
+        expect(")", tokens);
+        let body = parse_statement(tokens);
+        let name = make_temporary_label("while_loop", true);
+        Statement::While(condition, Box::new(body), name)
+    } else if next_token == "do" {
+        tokens.remove(0);
+        let body = parse_statement(tokens);
+        expect("while", tokens);
+        expect("(", tokens);
+        let condition = parse_expression(tokens, 0);
+        expect(")", tokens);
+        expect(";", tokens);
+        let name = make_temporary_label("do_while_loop", true);
+        Statement::DoWhile(Box::new(body), condition, name)
+    } else if next_token == "for" {
+        tokens.remove(0);
+        let name = make_temporary_label("for_loop", true);
+        expect("(", tokens);
+        let for_init = parse_for_init(tokens);
+        let condition;
+        if tokens.first().unwrap() == ";" {
+            //null
+            tokens.remove(0);
+            condition = None;
+        } else {
+            condition = Some(parse_expression(tokens, 0));
+            expect(";", tokens);
+        }
+        let post;
+        if tokens.first().unwrap() == ")" {
+            //null
+            tokens.remove(0);
+            post = None;
+        } else {
+            post = Some(parse_expression(tokens, 0));
+            expect(")", tokens);
+        }
+        let body = parse_statement(tokens);
+
+        Statement::For(for_init, condition, post, Box::new(body), name)
     } else {
         let exp = parse_expression(tokens, 0);
         expect(";", tokens);
         Statement::Expression(exp)
     }
+}
+
+fn parse_for_init(tokens: &mut Vec<String>) -> ForInit {
+    if tokens.first().unwrap() == "int" {
+        return ForInit::InitDecl(parse_declaration(tokens));
+    }
+    if tokens.first().unwrap() == ";" {
+        //null init
+        tokens.remove(0);
+        return ForInit::InitExp(None);
+    }
+    let expr = parse_expression(tokens, 0);
+    expect(";", tokens);
+    ForInit::InitExp(Some(expr))
 }
 
 fn parse_expression(tokens: &mut Vec<String>, min_precedence: i32) -> Expression {
@@ -388,4 +474,12 @@ fn expect(expected: &str, tokens: &mut Vec<String>) -> String {
         panic!("Found {}, expected {}", actual, expected);
     }
     tokens.remove(0)
+}
+
+fn make_temporary_label(label: &str, incr: bool) -> String {
+    if incr {
+        *(TEMP_COUNTER.lock().unwrap()) += 1;
+    }
+    let name = format!("{}.{}", label, TEMP_COUNTER.lock().unwrap());
+    name
 }

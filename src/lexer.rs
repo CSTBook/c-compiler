@@ -1,5 +1,5 @@
-use std::fs::{self};
 use regex::Regex;
+use std::fs::{self};
 
 fn read_file(filename: String) -> String {
     let filename = filename + ".i"; //accounting for the processed file name
@@ -61,6 +61,11 @@ pub fn lexer(filename: String) -> Vec<String> {
         Regex::new(r"\?").unwrap(),
         Regex::new(r":").unwrap(),
         Regex::new(r"[a-zA-Z_]\w*\b\s*:").unwrap(),
+        Regex::new(r"do").unwrap(),
+        Regex::new(r"for").unwrap(),
+        Regex::new(r"while").unwrap(),
+        Regex::new(r"break").unwrap(),
+        Regex::new(r"continue").unwrap(),
     ];
 
     let mut tokens: Vec<String> = Vec::new();

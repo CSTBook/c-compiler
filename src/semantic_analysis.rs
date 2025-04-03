@@ -180,6 +180,11 @@ fn resolve_statement(
 
             Statement::Compound(resolve_block(&block, &mut new_var_map))
         }
+        Statement::Break(_) => todo!(),
+        Statement::Continue(_) => todo!(),
+        Statement::While(expression, statement, _) => todo!(),
+        Statement::DoWhile(statement, expression, _) => todo!(),
+        Statement::For(for_init, expression, expression1, statement, _) => todo!(),
     }
 }
 
