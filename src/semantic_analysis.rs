@@ -11,8 +11,8 @@ struct MapEntry {
 
 pub fn semantic_analysis(ast_program: &mut Program) {
     variable_resolution(ast_program);
-    let mut labels = label_resolution(ast_program);
-    goto_resolution(&mut ast_program.function.body.body, &mut labels);
+    label_resolution(ast_program);
+    loop_label(ast_program);
 }
 
 fn variable_resolution(ast_program: &mut Program) {
@@ -37,15 +37,87 @@ fn resolve_block(block: &Block, variable_map: &mut HashMap<String, MapEntry>) ->
     Block { body }
 }
 
-fn label_resolution(ast_program: &mut Program) -> HashMap<String, String> {
+fn label_resolution(ast_program: &mut Program) {
     let mut labels: HashMap<String, String> = HashMap::new();
 
-    ast_program.function.body = resolve_block_label(&ast_program.function.body, &mut labels, false);
+    ast_program.function.body =
+        resolve_block_goto_label(&ast_program.function.body, &mut labels, false);
 
-    labels
+    goto_resolution(&mut ast_program.function.body.body, &mut labels); //not functioning this causes it to fall apart
 }
 
-fn resolve_block_label(
+fn loop_label(ast_program: &mut Program) {
+    resolve_block_loop_label(&mut ast_program.function.body, None);
+}
+
+fn resolve_block_loop_label(block: &mut Block, curr_loop_label: Option<String>) {
+    for block_item in &mut block.body {
+        resolve_block_item_loop_label(block_item, curr_loop_label.clone());
+    }
+}
+
+fn resolve_block_item_loop_label(block_item: &mut BlockItem, curr_loop_label: Option<String>) {
+    match block_item {
+        BlockItem::Statement(statement) => resolve_statement_loop_label(statement, curr_loop_label),
+        BlockItem::Declaration(_) => (),
+    }
+}
+
+fn resolve_statement_loop_label(statement: &mut Statement, curr_loop_label: Option<String>) {
+    let new_stmt = match statement {
+        Statement::If(cond, then, else_block) => {
+            resolve_statement_loop_label(then, curr_loop_label.clone());
+            if let Some(else_block) = else_block {
+                resolve_statement_loop_label(else_block, curr_loop_label.clone());
+            }
+            Statement::If(cond.clone(), then.clone(), else_block.clone())
+        }
+        Statement::Compound(block) => {
+            resolve_block_loop_label(block, curr_loop_label);
+            Statement::Compound(block.clone())
+        }
+        Statement::While(cond, body, _) => {
+            let loop_label = make_temporary_label("while");
+            resolve_statement_loop_label(body, Some(loop_label.clone()));
+            Statement::While(cond.clone(), body.clone(), loop_label)
+        }
+        Statement::DoWhile(body, cond, _) => {
+            let loop_label = make_temporary_label("do_while");
+            resolve_statement_loop_label(body, Some(loop_label.clone()));
+            Statement::DoWhile(body.clone(), cond.clone(), loop_label)
+        }
+        Statement::For(init, cond, post, body, _) => {
+            let loop_label = make_temporary_label("for");
+            resolve_statement_loop_label(body, Some(loop_label.clone()));
+            Statement::For(
+                init.clone(),
+                cond.clone(),
+                post.clone(),
+                body.clone(),
+                loop_label,
+            )
+        }
+        Statement::Break(_) => {
+            if let Some(loop_label) = curr_loop_label {
+                Statement::Break(loop_label)
+            } else {
+                panic!("Break outside of a loop")
+            }
+        }
+        Statement::Continue(_) => {
+            if let Some(loop_label) = curr_loop_label {
+                Statement::Continue(loop_label)
+            } else {
+                panic!("Continue outside of a loop")
+            }
+        }
+        _ => statement.clone(),
+    };
+
+    *statement = new_stmt;
+}
+
+fn resolve_block_goto_label(
     block: &Block,
     labels: &mut HashMap<String, String>,
     check_goto: bool,
@@ -56,7 +128,7 @@ fn resolve_block_label(
     for block_item in block.body.clone() {
         body.push(match block_item {
             BlockItem::Statement(ref statement) => {
-                BlockItem::Statement(resolve_statement_label(statement, labels, check_goto))
+                BlockItem::Statement(resolve_statement_goto_label(statement, labels, check_goto))
             }
             BlockItem::Declaration(_) => block_item,
         });
@@ -82,12 +154,13 @@ fn goto_resolution(body: &mut Vec<BlockItem>, labels: &mut HashMap<String, Strin
     //ensure that no goto statements to nonexistant labels
     for block_item in body {
         if let BlockItem::Statement(statement) = block_item {
-            *block_item = BlockItem::Statement(resolve_statement_label(statement, labels, true));
+            *block_item =
+                BlockItem::Statement(resolve_statement_goto_label(statement, labels, true));
         }
     }
 }
 
-fn resolve_statement_label(
+fn resolve_statement_goto_label(
     statement: &Statement,
     labels: &mut HashMap<String, String>,
     check_goto: bool,
@@ -109,9 +182,9 @@ fn resolve_statement_label(
         }
         Statement::If(cond, then, otherwise) => Statement::If(
             cond.clone(),
-            Box::new(resolve_statement_label(then, labels, check_goto)),
+            Box::new(resolve_statement_goto_label(then, labels, check_goto)),
             otherwise.as_ref().map(|otherwise_statement| {
-                Box::new(resolve_statement_label(
+                Box::new(resolve_statement_goto_label(
                     otherwise_statement,
                     labels,
                     check_goto,
@@ -129,7 +202,7 @@ fn resolve_statement_label(
             Statement::Goto(labels.get(label_name).unwrap().to_string())
         }
         Statement::Compound(block) => {
-            Statement::Compound(resolve_block_label(block, labels, check_goto))
+            Statement::Compound(resolve_block_goto_label(block, labels, check_goto))
         }
         _ => statement.clone(),
     }
@@ -180,11 +253,42 @@ fn resolve_statement(
 
             Statement::Compound(resolve_block(&block, &mut new_var_map))
         }
-        Statement::Break(_) => todo!(),
-        Statement::Continue(_) => todo!(),
-        Statement::While(expression, statement, _) => todo!(),
-        Statement::DoWhile(statement, expression, _) => todo!(),
-        Statement::For(for_init, expression, expression1, statement, _) => todo!(),
+        Statement::Break(_) => statement,
+        Statement::Continue(_) => statement,
+        Statement::While(condition, body, loop_label) => Statement::While(
+            resolve_expression(condition, variable_map),
+            Box::new(resolve_statement(*body, variable_map)),
+            loop_label,
+        ),
+        Statement::DoWhile(body, condition, loop_label) => Statement::DoWhile(
+            Box::new(resolve_statement(*body, variable_map)),
+            resolve_expression(condition, variable_map),
+            loop_label,
+        ),
+        Statement::For(for_init, condition, post, body, loop_label) => {
+            let mut new_var_map = copy_variable_map(variable_map);
+            let init = resolve_for_init(for_init, &mut new_var_map);
+            let cond = condition.map(|cond| resolve_expression(cond, &mut new_var_map));
+            let p = post.map(|p| resolve_expression(p, &mut new_var_map));
+            let new_body = resolve_statement(*body, &mut new_var_map);
+
+            Statement::For(init, cond, p, Box::new(new_body), loop_label)
+        }
+    }
+}
+
+fn resolve_for_init(for_init: ForInit, variable_map: &mut HashMap<String, MapEntry>) -> ForInit {
+    match for_init {
+        ForInit::InitDecl(declaration) => {
+            ForInit::InitDecl(resolve_declaration(declaration, variable_map))
+        }
+        ForInit::InitExp(expression) => {
+            if let Some(exp) = expression {
+                ForInit::InitExp(Some(resolve_expression(exp, variable_map)))
+            } else {
+                ForInit::InitExp(None)
+            }
+        }
     }
 }
 

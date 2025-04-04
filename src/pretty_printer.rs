@@ -131,18 +131,36 @@ pub mod parser {
                 tabs(indent_level)
             ),
             Statement::For(for_init, condition, post_exp, body, label_name) => {
-                let mut output = format!("For({}) (\n{}init=\n{}\n", label_name, tabs(indent_level+1), pretty_printer_for_init(for_init, indent_level+1));
+                let mut output = format!(
+                    "For({}) (\n{}init=\n{}\n",
+                    label_name,
+                    tabs(indent_level + 1),
+                    pretty_printer_for_init(for_init, indent_level + 1)
+                );
                 if let Some(cond) = condition {
-                    output+=&format!("{}condition=\n{}\n", tabs(indent_level+1), pretty_printer_expr(cond, indent_level+1));
+                    output += &format!(
+                        "{}condition=\n{}\n",
+                        tabs(indent_level + 1),
+                        pretty_printer_expr(cond, indent_level + 1)
+                    );
                 } else {
-                    output+=&format!("{}condition=None\n", tabs(indent_level+1));
+                    output += &format!("{}condition=None\n", tabs(indent_level + 1));
                 }
                 if let Some(post) = post_exp {
-                    output+=&format!("{}post=\n{}\n", tabs(indent_level+1), pretty_printer_expr(post, indent_level+1));
+                    output += &format!(
+                        "{}post=\n{}\n",
+                        tabs(indent_level + 1),
+                        pretty_printer_expr(post, indent_level + 1)
+                    );
                 } else {
-                    output+=&format!("{}post=None\n", tabs(indent_level+1));
+                    output += &format!("{}post=None\n", tabs(indent_level + 1));
                 }
-                output+=&format!("{}body=\n{}\n{})", tabs(indent_level+1), pretty_printer_statement(body, indent_level),tabs(indent_level));
+                output += &format!(
+                    "{}body=\n{}\n{})",
+                    tabs(indent_level + 1),
+                    pretty_printer_statement(body, indent_level),
+                    tabs(indent_level)
+                );
 
                 output
             }
@@ -158,7 +176,7 @@ pub mod parser {
                 } else {
                     format!("\n{}None", tabs(indent_level))
                 }
-            },
+            }
         }
     }
 
