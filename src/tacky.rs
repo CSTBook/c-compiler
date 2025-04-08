@@ -107,11 +107,15 @@ fn parse_block_item(block_item_ast: &parser::BlockItem) -> Vec<TackyInstruction>
             Statement::Label(label_name) => instructions.push(TackyInstruction::Label(label_name)),
             Statement::Goto(label_name) => instructions.push(TackyInstruction::Jump(label_name)),
             Statement::Compound(block) => instructions.extend(parse_block(&block)),
-            Statement::Break(loop_label) => instructions.push(TackyInstruction::Jump(String::from("break_")+&loop_label)),
-            Statement::Continue(loop_label) => instructions.push(TackyInstruction::Jump(String::from("continue_")+&loop_label)),
+            Statement::Break(loop_label) => {
+                instructions.push(TackyInstruction::Jump(String::from("break_") + &loop_label))
+            }
+            Statement::Continue(loop_label) => instructions.push(TackyInstruction::Jump(
+                String::from("continue_") + &loop_label,
+            )),
             Statement::While(cond, body, loop_label) => {
-                let continue_label = String::from("continue_")+&loop_label;
-                let end_label = String::from("break_")+&loop_label;
+                let continue_label = String::from("continue_") + &loop_label;
+                let end_label = String::from("break_") + &loop_label;
 
                 instructions.push(TackyInstruction::Label(continue_label.clone()));
                 let cond_res = parse_exp(cond, &mut instructions);
@@ -119,32 +123,36 @@ fn parse_block_item(block_item_ast: &parser::BlockItem) -> Vec<TackyInstruction>
                 instructions.extend(parse_block_item(&BlockItem::Statement(*body)));
                 instructions.push(TackyInstruction::Jump(continue_label));
                 instructions.push(TackyInstruction::Label(end_label));
-
-            },
+            }
             Statement::DoWhile(body, cond, loop_label) => {
-                let start_label = String::from("start_")+&loop_label;
-                let continue_label = String::from("continue_")+&loop_label;
-                let end_label = String::from("break_")+&loop_label;
+                let start_label = String::from("start_") + &loop_label;
+                let continue_label = String::from("continue_") + &loop_label;
+                let end_label = String::from("break_") + &loop_label;
 
                 instructions.push(TackyInstruction::Label(start_label.clone()));
                 instructions.extend(parse_block_item(&BlockItem::Statement(*body)));
                 instructions.push(TackyInstruction::Label(continue_label));
                 let cond_res = parse_exp(cond, &mut instructions);
-                instructions.push(TackyInstruction::JumpIfNotZero(cond_res, start_label.clone()));
+                instructions.push(TackyInstruction::JumpIfNotZero(
+                    cond_res,
+                    start_label.clone(),
+                ));
                 instructions.push(TackyInstruction::Label(end_label));
-            },
+            }
             Statement::For(for_init, cond, post, body, loop_label) => {
-                let start_label = String::from("start_")+&loop_label;
-                let continue_label = String::from("continue_")+&loop_label;
-                let end_label = String::from("break_")+&loop_label;
+                let start_label = String::from("start_") + &loop_label;
+                let continue_label = String::from("continue_") + &loop_label;
+                let end_label = String::from("break_") + &loop_label;
 
                 match for_init {
-                    parser::ForInit::InitDecl(declaration) => instructions.extend(parse_block_item(&BlockItem::Declaration(declaration))),
+                    parser::ForInit::InitDecl(declaration) => {
+                        instructions.extend(parse_block_item(&BlockItem::Declaration(declaration)))
+                    }
                     parser::ForInit::InitExp(expression) => {
                         if let Some(exp) = expression {
                             parse_exp(exp, &mut instructions);
                         }
-                    },
+                    }
                 }
 
                 instructions.push(TackyInstruction::Label(start_label.clone()));
@@ -159,7 +167,7 @@ fn parse_block_item(block_item_ast: &parser::BlockItem) -> Vec<TackyInstruction>
                 }
                 instructions.push(TackyInstruction::Jump(start_label));
                 instructions.push(TackyInstruction::Label(end_label));
-            },
+            }
         },
     }
     instructions

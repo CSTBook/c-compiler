@@ -9,93 +9,90 @@ fn read_file(filename: String) -> String {
 
 //TODO: optimize the lexer
 pub fn lexer(filename: String) -> Vec<String> {
-    let mut contents = read_file(filename);
+    let binding = read_file(filename);
+    let mut contents = binding.as_str();
 
+    //in descending length so as to reduce later computations
     let token_regexes = [
-        Regex::new(r"int\b").unwrap(),
-        Regex::new(r"void\b").unwrap(),
-        Regex::new(r"return\b").unwrap(),
-        Regex::new(r"\(").unwrap(),
-        Regex::new(r"\)").unwrap(),
-        Regex::new(r"\{").unwrap(),
-        Regex::new(r"\}").unwrap(),
-        Regex::new(r";").unwrap(),
-        Regex::new(r"[a-zA-Z_]\w*\b").unwrap(),
-        Regex::new(r"[0-9]+\b").unwrap(),
-        Regex::new(r"~").unwrap(),
-        Regex::new(r"-").unwrap(),
-        Regex::new(r"--").unwrap(),
-        Regex::new(r"\+").unwrap(),
-        Regex::new(r"\*").unwrap(),
-        Regex::new(r"\/").unwrap(),
-        Regex::new(r"%").unwrap(),
-        Regex::new(r"&").unwrap(),
-        Regex::new(r"\|").unwrap(),
-        Regex::new(r"\^").unwrap(),
-        Regex::new(r"<<").unwrap(),
-        Regex::new(r">>").unwrap(),
-        Regex::new(r"!").unwrap(),
-        Regex::new(r"&&").unwrap(),
-        Regex::new(r"\|\|").unwrap(),
-        Regex::new(r"==").unwrap(),
-        Regex::new(r"!=").unwrap(),
-        Regex::new(r"<").unwrap(),
-        Regex::new(r">").unwrap(),
-        Regex::new(r"<=").unwrap(),
-        Regex::new(r">=").unwrap(),
-        Regex::new(r"=").unwrap(),
-        Regex::new(r"\+=").unwrap(),
-        Regex::new(r"-=").unwrap(),
-        Regex::new(r"\*=").unwrap(),
-        Regex::new(r"\/=").unwrap(),
-        Regex::new(r"%=").unwrap(),
-        Regex::new(r"&=").unwrap(),
-        Regex::new(r"\|=").unwrap(),
-        Regex::new(r"\^=").unwrap(),
-        Regex::new(r"<<=").unwrap(),
-        Regex::new(r">>=").unwrap(),
-        Regex::new(r"--").unwrap(),
-        Regex::new(r"\+\+").unwrap(),
-        Regex::new(r"if").unwrap(),
-        Regex::new(r"else").unwrap(),
-        Regex::new(r"\?").unwrap(),
-        Regex::new(r":").unwrap(),
-        Regex::new(r"[a-zA-Z_]\w*\b\s*:").unwrap(),
-        Regex::new(r"do").unwrap(),
-        Regex::new(r"for").unwrap(),
-        Regex::new(r"while").unwrap(),
-        Regex::new(r"break").unwrap(),
-        Regex::new(r"continue").unwrap(),
+        r"^[a-zA-Z_]\w*\b\s*:",
+        r"^[a-zA-Z_]\w*\b",
+        r"^continue",
+        r"^[0-9]+\b",
+        r"^return\b",
+        r"^default",
+        r"^switch",
+        r"^void\b",
+        r"^break",
+        r"^while",
+        r"^int\b",
+        r"^case",
+        r"^else",
+        r"^\+\+",
+        r"^\|\|",
+        r"^for",
+        r"^>>=",
+        r"^<<=",
+        r"^\^=",
+        r"^\|=",
+        r"^\/=",
+        r"^\*=",
+        r"^\+=",
+        r"^do",
+        r"^\?",
+        r"^if",
+        r"^--",
+        r"^&=",
+        r"^%=",
+        r"^-=",
+        r"^>=",
+        r"^<=",
+        r"^!=",
+        r"^==",
+        r"^&&",
+        r"^>>",
+        r"^<<",
+        r"^\^",
+        r"^\|",
+        r"^\/",
+        r"^\*",
+        r"^\+",
+        r"^--",
+        r"^\}",
+        r"^\{",
+        r"^\)",
+        r"^\(",
+        r"^:",
+        r"^=",
+        r"^>",
+        r"^<",
+        r"^!",
+        r"^&",
+        r"^%",
+        r"^-",
+        r"^~",
+        r"^;",
     ];
+
+    let regex_token = Regex::new(&token_regexes.join("|")).unwrap();
 
     let mut tokens: Vec<String> = Vec::new();
 
-    while !contents.is_empty() {
+    loop {
         //trim whitespace at start
-        contents = contents.trim_start().to_string();
-
-        let mut token = String::new();
-
-        for regex_token in &token_regexes {
-            if let Some(mat) = regex_token.find(&contents) {
-                if mat.start() != 0 {
-                    continue;
-                }
-                if mat.as_str().len() > token.len() {
-                    token = mat.as_str().to_string();
-                }
-            }
-        }
-
-        if token.is_empty() {
-            if !contents.is_empty() {
-                panic!("Invalid token found in {}", contents)
-            }
+        contents = contents.trim_start();
+        if contents.is_empty() {
             break;
         }
 
-        contents = String::from(&contents[token.len()..]);
-        tokens.push(token.replace(|c: char| c.is_whitespace(), ""));
+        let token;
+
+        if let Some(mat) = regex_token.find(contents) {
+            token = mat.as_str().to_string();
+            contents = &contents[token.len()..];
+            tokens.push(token.replace(|c: char| c.is_whitespace(), ""));
+        } else {
+            panic!("Invalid token found in {}", contents)
+        }
     }
 
     tokens
